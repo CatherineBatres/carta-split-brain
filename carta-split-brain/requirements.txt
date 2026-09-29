@@ -1,0 +1,9 @@
+streamlit>=1.40
+requests>=2.32
+python-dotenv>=1.0
+google-genai>=1.0
+psutil>=6.0
+pandas>=2.2
+matplotlib>=3.9
+pytest>=8.0
+tabulate>=0.9

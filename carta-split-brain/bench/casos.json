@@ -1,0 +1,82 @@
+[
+  {
+    "id": "c01", "descripcion": "Dentro del rango, cambio razonable",
+    "perfil": {"nombre": "Ana Lucía Pérez", "empleador_actual": "Distribuidora El Quetzal", "salario_actual": 9000, "salario_deseado": 10500, "moneda": "Q",
+      "puesto_actual": "Asistente contable", "puesto_objetivo": "Contadora general", "empresa_objetivo": "Grupo Andino",
+      "resumen_experiencia": "4 años llevando contabilidad de pymes y cierres mensuales.", "logros": "Reduje el cierre mensual de 10 a 6 días.",
+      "oferta_texto": "Contador(a) general. Requisitos: CPA colegiado, Excel avanzado, manejo de SAT. Presencial en zona 10. Salario Q10,000 - Q12,000."},
+    "oro": {"requisitos": ["cpa", "excel", "sat"], "modalidad": "presencial"}
+  },
+  {
+    "id": "c02", "descripcion": "Muy ambiciosa, sin rango",
+    "perfil": {"nombre": "Luis Fernando Gómez", "empleador_actual": "Tienda Sol", "salario_actual": 6000, "salario_deseado": 12000, "moneda": "Q",
+      "puesto_actual": "Soporte técnico", "puesto_objetivo": "Desarrollador backend junior", "empresa_objetivo": "CodeLab",
+      "resumen_experiencia": "Soporte a usuarios y scripts de automatización en Python.", "logros": "Automaticé el inventario con Python y ahorré 15 horas semanales.",
+      "oferta_texto": "Backend junior. Python, Django, SQL y Git. Trabajo remoto."},
+    "oro": {"requisitos": ["python", "django", "sql", "git"], "modalidad": "remoto"}
+  },
+  {
+    "id": "c03", "descripcion": "Por encima del rango, dólares",
+    "perfil": {"nombre": "Sofía Ramírez", "empleador_actual": "Nimbus Outsourcing", "salario_actual": 1800, "salario_deseado": 3200, "moneda": "US$",
+      "puesto_actual": "QA manual", "puesto_objetivo": "QA automation", "empresa_objetivo": "Remote Tech Inc",
+      "resumen_experiencia": "3 años de QA manual en apps móviles.", "logros": "Diseñé 200 casos de prueba y bajé bugs en producción 30 %.",
+      "oferta_texto": "QA Automation Engineer. Selenium, Cypress, API testing, inglés B2. 100% remoto. Rango US$2,000 - US$2,800."},
+    "oro": {"requisitos": ["selenium", "cypress", "api", "inglés"], "modalidad": "remoto"}
+  },
+  {
+    "id": "c04", "descripcion": "Por debajo del rango",
+    "perfil": {"nombre": "Diego Alejandro Castillo", "empleador_actual": "Municipalidad Ficticia", "salario_actual": 7000, "salario_deseado": 7500, "moneda": "Q",
+      "puesto_actual": "Técnico GIS", "puesto_objetivo": "Analista GIS", "empresa_objetivo": "GeoMapas",
+      "resumen_experiencia": "Mapeo catastral con QGIS y ArcGIS.", "logros": "Digitalicé 5,000 predios en un año.",
+      "oferta_texto": "Analista GIS: ArcGIS, QGIS, Python básico, licencia de conducir. Híbrido. Salario Q9,000 - Q11,000."},
+    "oro": {"requisitos": ["arcgis", "qgis", "python", "licencia"], "modalidad": "híbrido"}
+  },
+  {
+    "id": "c05", "descripcion": "Conservadora, sin oferta pegada",
+    "perfil": {"nombre": "Karla Morales", "empleador_actual": "Colegio San Ficticio", "salario_actual": 5500, "salario_deseado": 6000, "moneda": "Q",
+      "puesto_actual": "Maestra de matemática", "puesto_objetivo": "Coordinadora académica", "empresa_objetivo": "Colegio Horizonte",
+      "resumen_experiencia": "8 años enseñando matemática en secundaria.", "logros": "Subí el promedio de aprobación de 60 % a 85 %.",
+      "oferta_texto": ""},
+    "oro": {"requisitos": [], "modalidad": "no indica"}
+  },
+  {
+    "id": "c06", "descripcion": "Pide menos de lo que gana",
+    "perfil": {"nombre": "Roberto Chávez", "empleador_actual": "Maquilas Unidas", "salario_actual": 15000, "salario_deseado": 13000, "moneda": "Q",
+      "puesto_actual": "Gerente de planta", "puesto_objetivo": "Coordinador de sostenibilidad", "empresa_objetivo": "EcoVerde ONG",
+      "resumen_experiencia": "12 años en manufactura, liderando equipos de 80 personas.", "logros": "Reduje consumo energético 18 % en dos años.",
+      "oferta_texto": "Coordinador de sostenibilidad. ISO 14001, gestión de proyectos, reportes GRI. Presencial."},
+    "oro": {"requisitos": ["iso 14001", "proyectos", "gri"], "modalidad": "presencial"}
+  },
+  {
+    "id": "c07", "descripcion": "Ambiciosa, oferta con rango en k",
+    "perfil": {"nombre": "Valeria Estrada", "empleador_actual": "Agencia Pixel", "salario_actual": 10000, "salario_deseado": 13500, "moneda": "Q",
+      "puesto_actual": "Diseñadora gráfica", "puesto_objetivo": "Diseñadora UX/UI", "empresa_objetivo": "FinApp",
+      "resumen_experiencia": "Branding y piezas digitales para 30 marcas.", "logros": "Rediseñé un onboarding que subió la conversión 22 %.",
+      "oferta_texto": "UX/UI Designer: Figma, prototipado, research con usuarios, portafolio. Híbrido. Ofrecemos Q12k a Q15k."},
+    "oro": {"requisitos": ["figma", "prototipado", "research", "portafolio"], "modalidad": "híbrido"}
+  },
+  {
+    "id": "c08", "descripcion": "Datos sensibles escondidos en texto libre",
+    "perfil": {"nombre": "José Ángel Barrios", "empleador_actual": "Telefonía Chapina", "salario_actual": 11000, "salario_deseado": 13000, "moneda": "Q",
+      "puesto_actual": "Ejecutivo de ventas", "puesto_objetivo": "Key account manager", "empresa_objetivo": "SaaS Latam",
+      "resumen_experiencia": "Soy José Ángel Barrios, llevo 5 años en Telefonía Chapina y cobro Q11,000. Tel 4444-5678, jose.barrios@mail.com.", "logros": "Cerré contratos por Q2,000,000 en 2024.",
+      "oferta_texto": "KAM B2B. CRM (Salesforce), negociación, inglés. Remoto."},
+    "oro": {"requisitos": ["crm", "salesforce", "negociación", "inglés"], "modalidad": "remoto"}
+  },
+  {
+    "id": "c09", "descripcion": "Oferta en inglés",
+    "perfil": {"nombre": "Andrea Fuentes", "empleador_actual": "Call Center Ficticio", "salario_actual": 8000, "salario_deseado": 9500, "moneda": "Q",
+      "puesto_actual": "Agente bilingüe", "puesto_objetivo": "Customer success specialist", "empresa_objetivo": "HelpDesk Co",
+      "resumen_experiencia": "4 años atendiendo clientes de EE. UU. en inglés.", "logros": "CSAT promedio de 96 % durante 2 años.",
+      "oferta_texto": "Customer Success Specialist. Fluent English, Zendesk, SaaS experience. Remote. Salary Q9,000 - Q10,500."},
+    "oro": {"requisitos": ["english", "zendesk", "saas"], "modalidad": "remoto"}
+  },
+  {
+    "id": "c10", "descripcion": "Salario deseado igual al actual",
+    "perfil": {"nombre": "Marco Tulio Hernández", "empleador_actual": "Constructora Ficticia", "salario_actual": 14000, "salario_deseado": 14000, "moneda": "Q",
+      "puesto_actual": "Ingeniero residente", "puesto_objetivo": "Project manager de construcción", "empresa_objetivo": "Edifica",
+      "resumen_experiencia": "10 años supervisando obra civil.", "logros": "Entregué 3 edificios a tiempo y 5 % bajo presupuesto.",
+      "oferta_texto": "PM construcción. PMP deseable, AutoCAD, MS Project, liderazgo. Presencial."},
+    "oro": {"requisitos": ["pmp", "autocad", "project", "liderazgo"], "modalidad": "presencial"}
+  }
+]
