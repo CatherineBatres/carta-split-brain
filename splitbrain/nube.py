@@ -44,7 +44,7 @@ class ClienteGemini:
     def configurado(self) -> bool:
         return bool(self.api_key)
 
-    def carta(self, payload: PayloadNube) -> tuple[str, dict]:
+    def carta(self, payload: PayloadNube, temperatura: float = 0.7) -> tuple[str, dict]:
         if not self.api_key:
             raise NubeNoDisponible("Falta GEMINI_API_KEY en .env")
         try:
@@ -61,7 +61,9 @@ class ClienteGemini:
                 model=self.modelo,
                 contents=prompt_carta(payload.campos),
                 config=types.GenerateContentConfig(
-                    system_instruction=SISTEMA_CARTA, temperature=0.7,
+                    system_instruction=SISTEMA_CARTA, temperature=temperatura,
+                    # No usamos herramientas: se apaga para evitar el aviso de AFC.
+                    automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True),
                 ),
             )
         except Exception as e:  # red, cuota, timeout, modelo inexistente...

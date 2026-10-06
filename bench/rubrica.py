@@ -19,6 +19,17 @@ MOMENTO_RE = re.compile(
     re.I)
 
 
+# D-23: listas ampliadas tras la primera prueba real. La versión inicial solo aceptaba
+# 4 saludos y 4 despedidas, y podía castigar una carta correcta que cerrara con
+# "Un cordial saludo" o abriera con "Respetable equipo". Se evalúa sobre texto sin tildes.
+SALUDO_RE = re.compile(
+    r"estimad|apreciad|respetable|distinguid|hola\b|a quien corresponda|"
+    r"buenos dias|buenas tardes|senor(es|a|as)?\b|equipo de (seleccion|reclutamiento|recursos)")
+DESPEDIDA_RE = re.compile(
+    r"atentamente|cordialmente|sinceramente|respetuosamente|saludos?\b|gracias|"
+    r"quedo a (su|la) disposicion|quedo atent|a la espera|un abrazo|agradezco")
+
+
 def _normalizar(s: str) -> str:
     s = unicodedata.normalize("NFD", s.lower())
     return "".join(c for c in s if unicodedata.category(c) != "Mn")
@@ -66,23 +77,60 @@ def evaluar_nota(texto: str, h: Hechos) -> dict:
     return c
 
 
-def evaluar_carta(texto: str, campos: dict[str, str]) -> dict:
+def requisitos_sin_respaldo(texto: str, campos: dict[str, str], requisitos: list[str]) -> list[str]:
+    """Requisitos de la OFERTA que la carta menciona pero que la persona nunca dijo tener.
+
+    Es una ALERTA para revisión humana, no una prueba: "me gustaría aprender Salesforce"
+    también la dispara. No entra en la nota de calidad (D-24).
+    """
+    carta = _normalizar(texto)
+    # D-28: el título del puesto no cuenta ("Project Manager" no es mencionar MS Project).
+    puesto = _normalizar(campos.get("puesto_objetivo", ""))
+    if puesto:
+        carta = carta.replace(puesto, " ")
+    propio = _normalizar(" ".join(campos.get(k, "") for k in
+                                  ("resumen_experiencia", "logros", "puesto_actual")))
+
+    def aparece(palabra: str, donde: str) -> bool:
+        # D-28: palabra completa. Antes "api" coincidía con "rápidamente" y "excel" con "excelencia".
+        return re.search(rf"(?<!\w){re.escape(_normalizar(palabra))}(?!\w)", donde) is not None
+
+    return [r for r in requisitos if aparece(r, carta) and not aparece(r, propio)]
+
+
+_VACIAS = {"de", "del", "la", "el", "los", "las", "en", "y", "para", "con"}
+
+
+def menciona(nombre: str, texto_norm: str) -> bool:
+    """¿El texto nombra este puesto o empresa? Compara por raíces de palabra (D-28).
+
+    La versión anterior exigía la frase exacta y rechazó una carta que decía
+    "Coordinación Académica" porque el puesto era "Coordinadora académica".
+    """
+    palabras = [w for w in _palabras(_normalizar(nombre)) if w not in _VACIAS and len(w) >= 2]
+    return all(re.search(rf"(?<!\w){re.escape(w[:6])}", texto_norm) for w in palabras)
+
+
+def evaluar_carta(texto: str, campos: dict[str, str], requisitos: list[str] | None = None) -> dict:
     n = len(_palabras(texto))
     norm = _normalizar(texto)
-    puesto = _normalizar(campos.get("puesto_objetivo", ""))
-    empresa = _normalizar(campos.get("empresa_objetivo", ""))
+    puesto = campos.get("puesto_objetivo", "")
+    empresa = campos.get("empresa_objetivo", "")
     c = {
         "n_palabras": n,
         "longitud_ok": int(150 <= n <= 350),
         "marcador_nombre": int("[[NOMBRE]]" in texto),
         "sin_dinero": int("[MONTO]" not in texto and not re.search(r"salar|sueldo|pretensi", norm)
                           and not any(m.es_dinero_probable for m in extraer_montos(texto))),
-        "menciona_puesto_y_empresa": int((not puesto or puesto in norm) and (not empresa or empresa in norm)),
-        "saludo_y_despedida": int(bool(re.search(r"estimad|apreciad|hola|a quien", norm))
-                                  and bool(re.search(r"atentamente|saludos|cordialmente|gracias", norm))),
+        "menciona_puesto_y_empresa": int(menciona(puesto, norm) and menciona(empresa, norm)),
+        "saludo_y_despedida": int(bool(SALUDO_RE.search(norm)) and bool(DESPEDIDA_RE.search(norm))),
         "en_espanol": int(es_espanol(texto)),
     }
     c["calidad"] = round(sum(v for k, v in c.items() if k != "n_palabras") / 6, 3)
+    if requisitos is not None:  # informativo: no cambia la calidad
+        dudosos = requisitos_sin_respaldo(texto, campos, requisitos)
+        c["requisitos_sin_respaldo"] = len(dudosos)
+        c["cuales_sin_respaldo"] = "; ".join(dudosos)
     return c
 
 

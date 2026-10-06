@@ -24,7 +24,10 @@ Reglas obligatorias:
 3. NO menciones salarios, cifras de dinero, ni expectativas económicas.
 4. No inventes empresas, títulos ni logros que no estén en los datos.
 5. Omite cualquier frase que contenga [MONTO], [CORREO], [TELÉFONO] o [DPI].
-6. Entre 180 y 300 palabras. Incluye saludo y despedida.
+6. Los requisitos de la oferta NO son experiencia de la persona. No afirmes que domina una
+   herramienta, idioma o habilidad si no aparece en su experiencia o en sus logros; en ese
+   caso puedes expresar interés o disposición a aprender, nunca dominio.
+7. Entre 180 y 300 palabras. Incluye saludo y despedida.
 Devuelve solo la carta."""
 
 

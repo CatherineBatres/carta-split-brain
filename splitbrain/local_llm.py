@@ -84,6 +84,15 @@ class ClienteOllama:
         except (requests.RequestException, ValueError):
             return False
 
+    def descargar(self) -> None:
+        """Saca el modelo de memoria (keep_alive=0). Sirve para medir un arranque en frío real
+        y para que un modelo no le quite memoria al siguiente."""
+        try:
+            requests.post(f"{self.host}/api/generate",
+                          json={"model": self.modelo, "keep_alive": 0}, timeout=30)
+        except requests.RequestException:
+            pass
+
     def memoria_modelo(self) -> dict:
         """Lo que Ollama reporta del modelo cargado (/api/ps): tamaño total y en VRAM."""
         try:

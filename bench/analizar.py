@@ -16,6 +16,8 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 import pandas as pd  # noqa: E402
 
+from bench.hoja import resumir_ciega  # noqa: E402
+
 RAIZ = Path(__file__).resolve().parent.parent
 COLORES = ["#2a78d6", "#eb6834"]  # paleta categórica validada (azul, naranja)
 TINTA, TINTA_2, REJILLA = "#1f1f1e", "#5f5e58", "#e6e5df"
@@ -44,17 +46,15 @@ def _barras(df: pd.DataFrame, columna: str, titulo: str, unidad: str, archivo: P
 
 
 def _humana(dir_: Path) -> pd.DataFrame | None:
-    """Une la hoja ciega calificada con la clave, si ya la llenaste."""
+    """Une la hoja ciega calificada (las NOTAS) con la clave, si ya la llenaste."""
     hoja, clave = dir_ / "evaluacion_ciega.csv", dir_ / "crudo" / "clave_ciega.json"
     if not hoja.exists() or not clave.exists():
         return None
-    h = pd.read_csv(hoja)
-    cols = ["naturalidad_1a5", "utilidad_1a5", "persuasion_1a5"]
-    h = h.dropna(subset=cols, how="all")
-    if h.empty:
+    resumen, hechas, _ = resumir_ciega(hoja, clave, ["claridad_1a5", "utilidad_1a5"],
+                                       "inventa_datos_si_no")
+    if not hechas:
         return None
-    h["modelo"] = h["id"].map(json.loads(clave.read_text()))
-    return h.groupby(["tarea", "modelo"])[cols].mean().round(2)
+    return pd.DataFrame(resumen).set_index("modelo")
 
 
 def main(simulado: bool) -> None:
@@ -64,7 +64,7 @@ def main(simulado: bool) -> None:
     img.mkdir(parents=True, exist_ok=True)
 
     agregados = {"calidad": "mean", "latencia_total_s": "median", "ttft_s": "median",
-                 "tokens_por_s": "median", "rss_pico_mb": "max"}
+                 "tokens_por_s": "median", "ps_size_mb": "median", "ps_vram_mb": "median"}
     agregados = {k: v for k, v in agregados.items() if k in df}
     resumen = df.groupby(["tarea", "modelo"]).agg(agregados).round(3)
     p95 = df.groupby(["tarea", "modelo"])["latencia_total_s"].quantile(0.95).round(3)
@@ -78,8 +78,11 @@ def main(simulado: bool) -> None:
 
     _barras(df, "calidad", "Calidad por tarea (rúbrica automática, 0–1)", "calidad", img / "calidad.png")
     _barras(df, "latencia_total_s", "Latencia total por tarea (mediana)", "segundos", img / "latencia.png")
-    if "rss_pico_mb" in df:
-        _barras(df, "rss_pico_mb", "Memoria pico de Ollama (mediana)", "MB", img / "memoria.png")
+    # D-27: la memoria que vale es la que reporta Ollama (/api/ps), no el RSS del proceso:
+    # con el modelo en la tarjeta gráfica, el RSS sale en ~100 MB y no dice nada.
+    if "ps_size_mb" in df and df["ps_size_mb"].notna().any():
+        _barras(df, "ps_size_mb", "Memoria del modelo cargado, según Ollama (mediana)", "MB",
+                img / "memoria.png")
 
     frio_path = dir_ / "arranque_en_frio.json"
     frio = json.loads(frio_path.read_text()) if frio_path.exists() else {}
@@ -90,7 +93,7 @@ def main(simulado: bool) -> None:
           "## Criterios de la rúbrica (proporción que cumple)", "", por_criterio.to_markdown(), "",
           "## Arranque en frío", "", "```json", json.dumps(frio, indent=2), "```", ""]
     if humana is not None:
-        md += ["## Evaluación humana ciega (1–5)", "", humana.to_markdown(), ""]
+        md += ["## Evaluación humana ciega de las notas (1–5)", "", humana.to_markdown(), ""]
     md += ["## Gráficas", "", f"![calidad]({img.relative_to(RAIZ)}/calidad.png)",
            f"![latencia]({img.relative_to(RAIZ)}/latencia.png)",
            f"![memoria]({img.relative_to(RAIZ)}/memoria.png)"]

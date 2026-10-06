@@ -1,0 +1,9 @@
+{
+  "qwen3.5:4b": {
+    "carga_modelo_s": 8.54,
+    "latencia_total_s": 9.205,
+    "rss_pico_mb": 160.7,
+    "ps_size_mb": 2988.1,
+    "ps_vram_mb": 2988.1
+  }
+}
