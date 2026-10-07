@@ -106,13 +106,14 @@ class ClienteOllama:
             pass
         return {}
 
-    def generar(self, prompt: str, sistema: str = "", formato_json: bool = False) -> Generacion:
+    def generar(self, prompt: str, sistema: str = "", formato_json: bool = False,
+                semilla: int | None = None) -> Generacion:
         cuerpo = {
             "model": self.modelo,
             "messages": ([{"role": "system", "content": sistema}] if sistema else [])
             + [{"role": "user", "content": prompt}],
             "stream": True,
-            "options": OPCIONES,
+            "options": OPCIONES if semilla is None else {**OPCIONES, "seed": semilla},
             "think": False,  # D-12: sin razonamiento visible, mismo trato a ambos modelos
         }
         if formato_json:

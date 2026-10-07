@@ -45,6 +45,44 @@ def _barras(df: pd.DataFrame, columna: str, titulo: str, unidad: str, archivo: P
     plt.close(fig)
 
 
+def tramos_lentos(serie: pd.Series, umbral: float = 0.6) -> pd.Series:
+    """Marca las respuestas generadas a menos del 60 % de la velocidad normal del modelo."""
+    return serie < umbral * serie.median()
+
+
+def grafica_ritmo(df: pd.DataFrame, archivo: Path, titulo: str) -> None:
+    """Tokens por segundo de cada respuesta, en el orden en que se generaron.
+
+    Si el equipo se calienta y baja el rendimiento, aquí se ve como un escalón (D-30).
+    """
+    fig, ax = plt.subplots(figsize=(7.5, 3.4), dpi=160)
+    for i, (modelo, g) in enumerate(df.groupby("modelo", sort=False)):
+        g = g.reset_index(drop=True)
+        ax.plot(g.index + 1, g["tokens_por_s"], color=COLORES[i % 2], lw=2, marker="o", ms=3.5,
+                label=modelo)
+        lentos = tramos_lentos(g["tokens_por_s"])
+        if lentos.any():
+            ini, fin = lentos[lentos].index.min() + 1, lentos[lentos].index.max() + 1
+            ax.axvspan(ini - 0.5, fin + 0.5, color="#f1f0ea", zorder=0)
+            v = g.loc[lentos, "tokens_por_s"].median()
+            ax.text((ini + fin) / 2, v + g["tokens_por_s"].max() * 0.08,
+                    f"tramo lento: {v:.0f} tokens/s", ha="center", fontsize=8.5, color=TINTA)
+    ax.set_ylim(0, df["tokens_por_s"].max() * 1.25)
+    ax.set_xlabel("respuesta número (en orden de ejecución)", color=TINTA_2, fontsize=9)
+    ax.set_ylabel("tokens por segundo", color=TINTA_2, fontsize=9)
+    ax.set_title(titulo, loc="left", color=TINTA, fontsize=11)
+    ax.grid(axis="y", color=REJILLA)
+    ax.set_axisbelow(True)
+    ax.tick_params(colors=TINTA_2, length=0)
+    for sp in ("top", "right"):
+        ax.spines[sp].set_visible(False)
+    if df["modelo"].nunique() > 1:
+        ax.legend(frameon=False, fontsize=8, loc="lower right")
+    fig.tight_layout()
+    fig.savefig(archivo)
+    plt.close(fig)
+
+
 def _humana(dir_: Path) -> pd.DataFrame | None:
     """Une la hoja ciega calificada (las NOTAS) con la clave, si ya la llenaste."""
     hoja, clave = dir_ / "evaluacion_ciega.csv", dir_ / "crudo" / "clave_ciega.json"
@@ -63,12 +101,25 @@ def main(simulado: bool) -> None:
     img = (RAIZ / "docs" / "img" / ("simulado" if simulado else ""))
     img.mkdir(parents=True, exist_ok=True)
 
-    agregados = {"calidad": "mean", "latencia_total_s": "median", "ttft_s": "median",
+    if "orden" in df:
+        df = df.sort_values("orden").reset_index(drop=True)
+    agregados = {"calidad": "mean", "latencia_total_s": "median",
                  "tokens_por_s": "median", "ps_size_mb": "median", "ps_vram_mb": "median"}
     agregados = {k: v for k, v in agregados.items() if k in df}
     resumen = df.groupby(["tarea", "modelo"]).agg(agregados).round(3)
-    p95 = df.groupby(["tarea", "modelo"])["latencia_total_s"].quantile(0.95).round(3)
-    resumen["latencia_p95_s"] = p95
+    resumen["latencia_max_s"] = df.groupby(["tarea", "modelo"])["latencia_total_s"].max().round(3)
+    # D-30: el tiempo al primer token solo vale en la primera repetición. En las siguientes el
+    # prompt es idéntico, Ollama lo tiene en caché y el número sale artificialmente bajo.
+    if "ttft_s" in df:
+        resumen["primer_token_s"] = (df[df["rep"] == 0].groupby(["tarea", "modelo"])["ttft_s"]
+                                     .median().round(3))
+    lentas = df.groupby("modelo", sort=False)["tokens_por_s"].transform(tramos_lentos)
+    ritmo = pd.DataFrame({
+        "respuestas": df.groupby("modelo", sort=False).size(),
+        "a_ritmo_lento": lentas.groupby(df["modelo"], sort=False).sum().astype(int),
+        "tokens_s_normal": df[~lentas].groupby("modelo", sort=False)["tokens_por_s"].median(),
+        "tokens_s_lento": df[lentas].groupby("modelo", sort=False)["tokens_por_s"].median(),
+    }).round(1)
 
     criterios = [c for c in ["longitud_ok", "cita_porcentaje", "sin_cifras_inventadas", "dice_cuando",
                              "en_espanol", "marcador_nombre", "sin_dinero",
@@ -84,6 +135,8 @@ def main(simulado: bool) -> None:
         _barras(df, "ps_size_mb", "Memoria del modelo cargado, según Ollama (mediana)", "MB",
                 img / "memoria.png")
 
+    grafica_ritmo(df, img / "ritmo.png", "Velocidad de cada respuesta, en orden de ejecución")
+
     frio_path = dir_ / "arranque_en_frio.json"
     frio = json.loads(frio_path.read_text()) if frio_path.exists() else {}
     humana = _humana(dir_)
@@ -91,14 +144,18 @@ def main(simulado: bool) -> None:
     md = ["# Resultados del benchmark" + (" (SIMULADO: no usar)" if simulado else ""), "",
           "## Resumen por tarea y modelo", "", resumen.to_markdown(), "",
           "## Criterios de la rúbrica (proporción que cumple)", "", por_criterio.to_markdown(), "",
+          "## Ritmo: ¿bajó la velocidad durante la corrida?", "", ritmo.to_markdown(), "",
+          "*A ritmo lento*: respuestas generadas a menos del 60 % de la velocidad normal del "
+          "modelo (señal de que el equipo se calentó o estaba ocupado).", "",
           "## Arranque en frío", "", "```json", json.dumps(frio, indent=2), "```", ""]
     if humana is not None:
         md += ["## Evaluación humana ciega de las notas (1–5)", "", humana.to_markdown(), ""]
-    md += ["## Gráficas", "", f"![calidad]({img.relative_to(RAIZ)}/calidad.png)",
-           f"![latencia]({img.relative_to(RAIZ)}/latencia.png)",
-           f"![memoria]({img.relative_to(RAIZ)}/memoria.png)"]
+    rel = "../" * (len(dir_.relative_to(RAIZ).parts)) + str(img.relative_to(RAIZ)).replace("\\", "/")
+    md += ["## Gráficas", "", f"![calidad]({rel}/calidad.png)", f"![latencia]({rel}/latencia.png)",
+           f"![memoria]({rel}/memoria.png)", f"![ritmo]({rel}/ritmo.png)"]
     (dir_ / "resumen.md").write_text("\n".join(md), encoding="utf-8")
     print("\n".join(md[:12]))
+    print(ritmo.to_string())
     print(f"\nEscrito {dir_ / 'resumen.md'}")
 
 

@@ -95,3 +95,24 @@ def test_hoja_ciega_guardada_por_excel(tmp_path):
     por = {r["modelo"]: r for r in resumen}
     assert por["gemma"]["lista_para_enviar_1a5"] == 5 and por["gemma"]["inventa_n"] == 1
     assert por["qwen"]["persuasion_1a5"] is None and por["qwen"]["inventa_n"] == 0
+
+
+# ---- D-30: reglas de la NOTA que fallaban por diseño -------------------------------------
+@pytest.mark.parametrize("pct,texto,esperado", [
+    (16.67, "un aumento del 16.7 % es razonable", True),    # antes exigía "17"
+    (16.67, "un aumento del 17% es razonable", True),
+    (77.78, "pides un 77,8 % más", True),
+    (-13.3, "una reducción del 13.3 %", True),
+    (0.0, "es un cambio de 0.0 %", True),
+    (16.67, "un aumento del 30 % es razonable", False),     # cifra equivocada
+    (16.67, "un aumento del 116.7 %", False),               # no vale como parte de otro número
+])
+def test_cita_el_porcentaje(pct, texto, esperado):
+    assert rubrica.cita_el_porcentaje(texto, pct) is esperado
+
+
+def test_iso_14001_no_es_una_cifra_inventada(perfil):
+    h = reglas.analizar(perfil)
+    assert rubrica.cifras_inventadas("La oferta pide ISO 14001 y 3 años de experiencia.", h) == []
+    assert rubrica.cifras_inventadas("Pide Q20,000 de entrada.", h) == ["Q20,000"]
+    assert rubrica.cifras_inventadas("Pasar de Q12,500 a Q16,000 es viable.", h) == []

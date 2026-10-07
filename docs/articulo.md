@@ -187,7 +187,9 @@ Los tres modelos recibieron exactamente la misma instrucción: *"los requisitos 
 
 La instrucción ayuda: sin ella, Gemini había escrito *"cuento con experiencia en el uso de Salesforce"*; con ella, para el mismo perfil, *"con plena disposición para familiarizarme con el uso de Salesforce"*. Pero no alcanza: aun con la instrucción, marqué cartas de los tres modelos.
 
-**Una aclaración sobre estos números.** Hice una segunda lectura, esta vez no ciega y con ayuda de un asistente de IA, contando solo las afirmaciones más graves (una herramienta, un título o un idioma concretos). Con ese criterio estricto salió 0 de 10 para Gemini, 2 para Gemma y 5 para Qwen. El orden es el mismo; las cantidades dependen de qué tan estricta seas con la palabra "inventar". ⟦Si comparas las dos lecturas carta por carta, cuenta aquí en cuáles no coincidieron.⟧
+**Una aclaración sobre estos números.** Hice una segunda lectura, esta vez no ciega y con ayuda de un asistente de IA, contando solo las afirmaciones más graves (una herramienta, un título o un idioma concretos). Con ese criterio estricto salió 0 de 10 para Gemini, 2 para Gemma y 5 para Qwen. El orden es el mismo; las cantidades dependen de qué tan estricta seas con la palabra "inventar". Al comparar carta por carta, las 7 que marcó la lectura estricta también las había marcado yo a ciegas; yo marqué 9 más, todas con afirmaciones más suaves.
+
+**Y una confesión sobre mi nota.** Al revisar mi hoja vi que solo usé dos valores: 5 cuando la carta no inventaba nada y 3 cuando sí. Mis dos columnas medían lo mismo. No lo planeé así, pero dice algo: para mí, que una carta invente es casi lo único que decide si la mandaría.
 
 ### ¿Quién gana en cada cosa?
 
@@ -215,9 +217,15 @@ La instrucción ayuda: sin ella, Gemini había escrito *"cuento con experiencia 
 
 **4. El arranque pesa más que la generación.** Cargar Gemma toma unos 20 segundos; escribir la carta, 10.
 
-**5. La misma prueba dio 22 segundos un rato y 58 otro.** En una de mis corridas, Qwen tardó casi un minuto por carta, con las mismas instrucciones y en la misma computadora. Mi mejor explicación es que el modelo anterior seguía cargado y los dos no cabían juntos en la tarjeta gráfica (3.1 + 3.0 GB), pero no lo pude comprobar. En tu laptop, el modelo comparte la máquina con todo lo demás.
+**5. Mi laptop tiene un "modo lento", y lo encontré por accidente.** En una de mis corridas, Qwen tardó casi un minuto por carta en vez de 22 segundos, con las mismas instrucciones. Días después lo vi con claridad: dejé a Qwen generando 87 respuestas seguidas, sin pausas.
 
-**6. Mi computadora se apagó en plena evaluación.** Lancé mi prueba más larga, 174 respuestas seguidas, y la laptop se apagó sola a media corrida. ⟦Confirmar la causa; lo más probable es la temperatura.⟧ Perdí todo, porque mi script guardaba los resultados hasta el final. En la nube, medir más es mandar más peticiones. En local, medir más es calor. Rehíce la evaluación: guarda cada respuesta al instante, descansa cada 15 y, si se apaga, continúa donde se quedó.
+![Tokens por segundo de 87 respuestas seguidas: estable en 20 durante las primeras 55, cae de golpe a 7 entre la 56 y la 75, y vuelve a 20](img/calor_qwen.png)
+
+Durante casi 11 minutos generó a 20 tokens por segundo. De pronto cayó a 7, se quedó ahí otros 11 minutos, y volvió sola a 20. Una carta que tardaba 20 segundos pasó a tardar 59. No cambié nada: ni el modelo, ni las instrucciones, ni la memoria. Lo que cambió fue la máquina. ⟦No medí la temperatura, pero es el comportamiento típico de una laptop que se protege del calor.⟧
+
+Eso también corrigió una conclusión mía. Yo había escrito que Gemma "aguantaba mejor" que Qwen una máquina ocupada. No era cierto: en aquella corrida la caída empezó en la última carta de Gemma, y a Qwen simplemente le tocó correr en el peor momento.
+
+**6. Mi computadora se apagó en plena evaluación.** En otra prueba larga, de 174 respuestas seguidas, la laptop directamente se apagó. Perdí todo, porque mi script guardaba los resultados hasta el final. En la nube, medir más es mandar más peticiones. En local, medir más es calor. Rehíce la evaluación: guarda cada respuesta al instante, descansa cada 15 y, si se apaga, continúa donde se quedó.
 
 **7. Mi "detector de mentiras" no detecta mentiras.** Construí una alerta que marca las cartas que mencionan requisitos que la persona no dijo tener. Se disparó en 26 de 30 cartas, casi igual en los tres modelos, porque no distingue "domino Git" de "quiero aprender Git". Me sirvió para saber qué frases leer. La respuesta la dio la lectura.
 
@@ -241,6 +249,7 @@ No las apliqué en medio de la evaluación a propósito. Si cambio lo que recibe
 ### Errores míos en esta misma sección
 
 - **Calculé mal la mediana.** Mi script tomaba el valor central de arriba en vez de promediar los dos centrales, y con eso el orden entre Gemma y Gemini salía invertido.
+- **Casi publico una clave secreta.** Pegué la clave de la API en `.env.example`, la plantilla que sí se sube, en lugar de dejarla solo en `.env`. GitHub detectó la clave y rechazó la subida. Mi app cuida el salario de sus usuarias con tres capas de protección, y lo que estuvo a punto de filtrarse fue mi propia configuración. Ahora una prueba automática revisa que ningún archivo del proyecto tenga algo con forma de clave.
 - **Borré mi primera corrida.** Guardé la segunda en la misma carpeta y perdí las 30 cartas originales. Ahora el script se niega a escribir encima de una corrida.
 - **Reporté una memoria que no era.** El script imprimió "RAM pico: 97.6 MB" para un modelo de 3 GB. Medía la memoria del proceso, y el modelo estaba en la tarjeta gráfica.
 - **Mi rúbrica rechazó una carta por decir "Coordinación Académica"** en lugar de "Coordinadora académica". Segunda vez que la regla era el problema y no el modelo.
@@ -249,7 +258,7 @@ No las apliqué en medio de la evaluación a propósito. Si cambio lo que recibe
 
 **Gemma 4 E4B.**
 
-- **Por qué:** con el mismo equipo y casi la misma memoria, genera el doble de rápido (42 contra 20 tokens por segundo) y empieza a escribir antes (1.4 s contra 3.8 s). A ciegas, sus cartas sacaron 4.20 contra 3.40, e inventó en 5 de 10 contra 8 de 10. Cuando la máquina estuvo ocupada, siguió en 10 segundos mientras Qwen subía a 58.
+- **Por qué:** con el mismo equipo y casi la misma memoria, genera el doble de rápido (42 contra 20 tokens por segundo) y empieza a escribir antes (1.4 s contra 3.8 s). A ciegas, sus cartas sacaron 4.20 contra 3.40, e inventó en 5 de 10 contra 8 de 10.
 - **En qué pierde:** ocupa 108 MB más de memoria (un 3.5 %) y en dos de tres corridas tardó unos 7 segundos más en arrancar. Y aun ganando, la mitad de sus cartas tenía algo que corregir: no es un modelo al que le puedas confiar tu carta sin leerla.
 - **Qué falta:** ⟦PENDIENTE: las otras dos tareas locales (la nota de negociación y la extracción de requisitos)⟧.
 
@@ -259,7 +268,7 @@ No las apliqué en medio de la evaluación a propósito. Si cambio lo que recibe
 
 **1. La nube se ganó su lugar por poco.** Mandé la carta a la nube "porque escribe mejor". En forma, empató con mi modelo local. A ciegas ganó por 0.2 puntos de 5, y fue la que menos inventó. Me quedo con la nube para la carta, sabiendo que es una decisión por margen estrecho y que, si un día pesa más la privacidad o el costo, pasar a local cuesta poco.
 
-**2. Para esta app, el mejor modelo local es Gemma 4 E4B.** El doble de rápido que Qwen, 0.8 puntos mejor a ciegas y con menos invenciones. Pierde por poco en memoria y en arranque.
+**2. Para esta app, el mejor modelo local es Gemma 4 E4B.** El doble de rápido que Qwen, 0.8 puntos mejor a ciegas y con menos invenciones. Pierde por poco en memoria y en arranque. ⟦Confirmar con la nota y la extracción.⟧
 
 **3. Una métrica automática mide la forma, no la verdad.** Mis 30 cartas sacaron nota perfecta, incluida la que inventó un título profesional. Al leerlas, quedaron separadas por un punto entero.
 
@@ -267,7 +276,7 @@ No las apliqué en medio de la evaluación a propósito. Si cambio lo que recibe
 
 **5. La privacidad tiene un costo, y es silencioso.** Ocultar el nombre ocultó el género; proteger montos borró "ISO 14001". Mis pruebas no lo vieron porque no era una fuga.
 
-**6. Un modelo local vive en tu computadora, con todo lo que eso implica.** Su velocidad cambia si la máquina está ocupada, la primera respuesta tarda el doble que las demás, y una prueba larga puede apagarte el equipo.
+**6. Un modelo local vive en tu computadora, con todo lo que eso implica.** La primera respuesta tarda el doble que las demás; tras diez minutos de trabajo continuo la velocidad puede caer a un tercio; y una prueba larga puede apagarte el equipo.
 
 **7. Lo exacto y lo privado van en código, no en un modelo.** Todo lo inventado en este proyecto salió de un modelo. Las reglas nunca inventan.
 

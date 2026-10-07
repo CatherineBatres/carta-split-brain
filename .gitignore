@@ -4,7 +4,6 @@ __pycache__/
 .venv/
 venv/
 .pytest_cache/
-resultados/crudo/
 .DS_Store
 resultados/simulado/
 docs/img/simulado/

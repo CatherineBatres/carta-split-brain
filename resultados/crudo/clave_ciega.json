@@ -1,0 +1,22 @@
+{
+  "T000": "qwen3.5:4b",
+  "T001": "qwen3.5:4b",
+  "T002": "qwen3.5:4b",
+  "T003": "qwen3.5:4b",
+  "T004": "gemma4:e4b",
+  "T005": "gemma4:e4b",
+  "T006": "qwen3.5:4b",
+  "T007": "gemma4:e4b",
+  "T008": "qwen3.5:4b",
+  "T009": "gemma4:e4b",
+  "T010": "gemma4:e4b",
+  "T011": "gemma4:e4b",
+  "T012": "qwen3.5:4b",
+  "T013": "gemma4:e4b",
+  "T014": "qwen3.5:4b",
+  "T015": "gemma4:e4b",
+  "T016": "gemma4:e4b",
+  "T017": "qwen3.5:4b",
+  "T018": "gemma4:e4b",
+  "T019": "qwen3.5:4b"
+}

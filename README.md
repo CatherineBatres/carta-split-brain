@@ -144,6 +144,9 @@ No necesitan Ollama ni internet: usan clientes falsos que **registran todo lo qu
 | El guardián atrapa el salario en 10 formatos (`12,500`, `12.5k`, `12.5 mil`, ×12, ×14…) | `test_guardian_atrapa_el_salario_en_cualquier_formato` |
 | La decisión de qué sale es explícita | `tests/test_router.py::test_todo_campo_esta_clasificado_una_sola_vez` |
 | Sin conexión sigue siendo útil | `tests/test_offline.py` |
+| Ninguna clave real en los archivos que se suben | `tests/test_secretos.py` |
+
+Corre `pytest` **antes de cada `git push`**: la última prueba existe porque una clave real quedó una vez en `.env.example` y GitHub bloqueó el push (D-30).
 
 ---
 
@@ -229,7 +232,7 @@ Hay dos evaluaciones, y responden preguntas distintas:
 | Corrida | Prompt | Qué la distingue | Se usa para concluir |
 |---|---|---|---|
 | 1 | Anterior a la regla 6 | Primera corrida completa | Latencia y rúbrica (las cartas ya no existen: ver nota) |
-| 1b | Con regla 6 | La máquina estaba ocupada con otra cosa | Solo como evidencia de variabilidad |
+| 1b | Con regla 6 | El equipo cayó a un tercio de su velocidad a mitad de la corrida | Solo como evidencia de variabilidad |
 | **2** | Con regla 6 | Gemini también se calienta; más métricas | ✅ **Corrida de referencia** |
 
 ![Terminal con la corrida 2: 10 perfiles por modelo, con alertas de requisitos sin respaldo](docs/img/corrida_2.png)
@@ -260,7 +263,7 @@ Hay dos evaluaciones, y responden preguntas distintas:
 **Tres notas de honestidad sobre estos datos**
 
 1. **Las cartas de la corrida 1 se perdieron.** La corrida 1b se guardó en la misma carpeta y las reemplazó. Por eso no hay un "antes y después" de la regla 6 con las mismas cartas. Quedan sus latencias y su rúbrica ([captura](docs/img/corrida_10_perfiles.png)). El script ahora se niega a escribir sobre una corrida existente (D-27).
-2. **En la corrida 1b Qwen tardó 58 s por carta, 2.6 veces más que en las otras dos**, con el mismo prompt y el mismo equipo. Lo más probable es que algo más estuviera usando la máquina, o que Gemma siguiera cargado y los dos modelos no cupieran juntos en la memoria de la tarjeta gráfica. No se pudo comprobar. El script ahora descarga cada modelo antes de pasar al siguiente (D-27).
+2. **En la corrida 1b Qwen tardó 58 s por carta, 2.6 veces más que en las otras dos**, con el mismo prompt y el mismo equipo. Una corrida posterior mostró la causa más probable: bajo carga sostenida, el equipo baja a un tercio de su velocidad durante unos 10 minutos (sección 8.6). En la 1b esa caída empezó en la última carta de Gemma (30 s en vez de 10) y abarcó las diez de Qwen. No dice nada sobre Qwen: le tocó correr en el peor momento.
 3. **La mediana de la corrida 1** se imprimió mal en la terminal (10.37, 22.28 y 10.74 s). La tabla usa la mediana correcta (D-25).
 
 ### 8.3 ¿Cuál es mejor en cada apartado? (corrida 2)
@@ -277,14 +280,14 @@ Hay dos evaluaciones, y responden preguntas distintas:
 | Tiempo al primer token | 1.4 s | 3.8 s | — | **Gemma** | Lo que tarda en aparecer la primera palabra |
 | Memoria del modelo | 3,096 MB | 2,988 MB | No usa tu equipo | Qwen, por 108 MB | Diferencia del 3.5 %: en la práctica, empate |
 | Arranque | 20.9 s | 13.1 s | 9.4 s | No concluyente | Qwen arrancó antes en 2 de 3 corridas. ⏳ Medición controlada en la evaluación B |
-| Sensibilidad al entorno | Baja | **Alta** | Depende de la red | Gemma | En la corrida 1b Qwen pasó de 22 a 58 s; Gemma siguió en 10 s |
+| Bajo carga sostenida | Baja a un tercio | Baja a un tercio | Depende de la red | Ninguno | Cuando el equipo se satura, los dos locales se frenan igual: Gemma pasó de 10 a 30 s y Qwen de 20 a 59 s (8.6) |
 | Privacidad | Nada sale | Nada sale | Salen datos sanitizados | **Locales** | Por diseño |
 | Sin conexión | Funciona | Funciona | No funciona | **Locales** | `tests/test_offline.py` |
 | Costo por carta | Solo tu equipo | Solo tu equipo | Gratis en la capa gratuita; de pago, una fracción de centavo de dólar | **Locales** | Unos 670 tokens por carta. Estimación: verificar el precio vigente |
 | **Lista para enviar** (1–5) | 4.20 | 3.40 | 4.40 | Gemini, por 0.2; entre locales, **Gemma** por 0.8 | Evaluación ciega de 30 cartas |
 
 **Lectura:**
-- **Entre los modelos locales, Gemma gana en casi todo:** genera el doble de rápido, empieza a escribir antes, aguanta mejor una máquina ocupada, inventa menos y sus cartas se calificaron 0.8 puntos mejor. Qwen solo gana en memoria, por un margen del 3.5 %.
+- **Entre los modelos locales, Gemma gana en casi todo:** genera el doble de rápido, empieza a escribir antes, inventa menos y sus cartas se calificaron 0.8 puntos mejor. Qwen solo gana en memoria, por un margen del 3.5 %.
 - **Por qué Qwen es más lento:** no es por escribir más (sus cartas son un 12 % más largas) ni por quedarse sin memoria de GPU (está cargado al 100 %). Genera 20 tokens por segundo contra 42 de Gemma en el mismo equipo. Tampoco "piensa" a escondidas: la relación entre tokens y palabras es la misma en ambos (1.3).
 - **Gemini gana donde más importa para esta app, pero por poco:** es el que menos inventa (3 de 9 cartas contra 5 de 10 de Gemma) y el mejor calificado (4.40 contra 4.20). También suele ser algo más rápido, pero impredecible: entre 7 y 18 s por la misma tarea.
 - **El modelo local quedó a 0.2 puntos del de la nube.** Con 10 cartas por modelo, esa diferencia no es concluyente.
@@ -336,6 +339,7 @@ Cada carta se calificó sin saber qué modelo la escribió (códigos `C000`–`C
 - **Gemma queda muy cerca de Gemini** (0.2 puntos y 2 cartas). **Qwen queda lejos de los dos** (1 punto, y 8 de cada 10 cartas con algo inventado).
 - Ningún modelo quedó libre: incluso el de la nube tuvo cartas marcadas.
 - Límites: una sola persona calificó; naturalidad y persuasión no se calificaron; una carta de Gemini quedó sin respuesta en "inventa".
+- **Las dos columnas no son independientes.** Las notas fueron solo 3 o 5, y casi siempre 3 cuando la carta se marcó como "inventa" y 5 cuando no (una excepción en 29). En la práctica, la evaluación ciega midió una sola cosa: si la carta inventa.
 
 **Segunda lectura, con un criterio más estricto (no ciega)**
 
@@ -355,7 +359,8 @@ Aquí cuenta como "inventa" solo cuando la carta **afirma tener** una herramient
 Qwen además adornó logros con detalles que nadie le dio: *"cientos de predios"* (c04), *"una plataforma financiera"* (c07), *"más de ochenta colaboradores"* cuando el perfil dice 80 (c06).
 
 **Cómo leer esta tabla**
-- Es una lectura **no ciega**, hecha con ayuda de un asistente de IA. La evaluación ciega confirma el orden, pero no el "0 de 10" de Gemini: con un criterio más amplio, 3 de sus cartas también se marcaron. Falta comparar las dos lecturas carta por carta.
+- Es una lectura **no ciega**, hecha con ayuda de un asistente de IA. La evaluación ciega confirma el orden, pero no el "0 de 10" de Gemini: con un criterio más amplio, 3 de sus cartas también se marcaron.
+- **Comparación carta por carta (29 cartas con respuesta):** las 7 cartas de esta tabla también se marcaron a ciegas; ninguna quedó fuera. La evaluación ciega marcó 9 más (3 por modelo), todas con afirmaciones más suaves: supuestos razonables o adornos. En 13 cartas las dos lecturas coinciden en que no hay nada inventado.
 - Los tres modelos recibieron la misma regla. La diferencia está en **cuánto la obedecen**: el modelo de la nube más que los pequeños, y Gemma más que Qwen.
 - La alerta automática marcó 8, 9 y 9 cartas de cada 10, casi igual en los tres modelos. No sirve para contar: se dispara igual con *"domino Git"* que con *"quiero aprender Git"*. Sirve para saber qué frases leer.
 
@@ -403,6 +408,22 @@ python -m bench.analizar                             # tablas y gráficas
 
 Resultados: [`resultados/resumen.md`](resultados/resumen.md).
 
+**Lo que ya mostró una corrida larga (Qwen, 87 respuestas seguidas sin pausas)**
+
+![Tokens por segundo de 87 respuestas seguidas de Qwen: estable en 20 durante las primeras 55, cae a 7 entre la 56 y la 75, y vuelve a 20](docs/img/calor_qwen.png)
+
+| Tramo | Respuestas | Duración | Tokens/s | Una carta tarda |
+|---|---|---|---|---|
+| Normal | 1–55 | 10.7 min | 20.0 | 20 s |
+| Lento | 56–75 | 10.6 min | **6.9** | **59 s** |
+| Recuperado | 76–87 | 1.6 min | 20.5 | 20 s |
+
+- El modelo, el prompt y la memoria no cambiaron: lo que cambió fue el equipo. El patrón (carga sostenida, caída brusca, recuperación sola) es el de una laptop que se protege del calor, aunque no se midió la temperatura.
+- Explica la corrida 1b: los 58 s por carta de Qwen son el mismo "modo lento".
+- Dos lecciones de medición que salieron de esta corrida (D-30): las tres repeticiones de cada texto eran **idénticas** porque compartían semilla, así que no aportaban nada a la calidad; y el tiempo al primer token de las repeticiones 2 y 3 salía en 0.3 s porque el prompt ya estaba en caché (en la primera, 1.3 a 3.7 s).
+
+Datos: [`resultados/corrida_larga_qwen/`](resultados/corrida_larga_qwen/).
+
 ### 8.7 Cómo reproducir la evaluación A
 
 ```bash
@@ -435,7 +456,6 @@ Cada conclusión indica en qué se apoya y qué falta para cerrarla.
 **1. Mejor modelo local para este reto: Gemma 4 E4B.**
 - *Velocidad:* con el mismo equipo y casi la misma memoria, genera el doble de rápido que Qwen (41.9 contra 20.1 tokens/s), empieza a escribir antes (1.4 s contra 3.8 s) y termina la carta en menos de la mitad del tiempo (9.5 s contra 22.8 s). Fue más rápido en las 30 comparaciones perfil a perfil de las tres corridas.
 - *Calidad:* en la evaluación ciega sus cartas sacaron 4.20 de 5 contra 3.40 de Qwen, y se marcaron como "inventa" 5 de 10 contra 8 de 10.
-- *Robustez:* cuando la máquina estuvo ocupada, Gemma siguió en 10 s y Qwen subió a 58 s.
 - *En qué pierde:* usa 108 MB más de memoria (un 3.5 %) y arrancó más lento en 2 de 3 corridas (unos 7 s). Y aun ganando, la mitad de sus cartas tuvo algo que revisar.
 - *Qué falta:* la nota y la extracción, en la evaluación B.
 
@@ -462,10 +482,10 @@ Cada conclusión indica en qué se apoya y qué falta para cerrarla.
 **6. Lo local depende de tu equipo, no solo del modelo.**
 - *Arranque:* cargar el modelo (12–21 s) cuesta más que escribir una carta con Gemma (10 s).
 - *Entorno:* el mismo modelo, con el mismo prompt y en la misma máquina, tardó 22 s en dos corridas y 58 s en otra. Un número de latencia sin sus condiciones no significa nada.
-- *Aguante:* una corrida larga de evaluación apagó la laptop. Lo que en la nube es "mandar más peticiones", en local es calor, y hubo que rediseñar la evaluación con pausas y guardado continuo (D-29).
+- *Carga sostenida:* tras 10.7 minutos generando sin pausa, la velocidad cayó de 20 a 7 tokens por segundo y tardó otros 10.6 minutos en recuperarse; una carta pasó de 20 s a 59 s (8.6). Otra corrida larga llegó a apagar la laptop. Lo que en la nube es "mandar más peticiones", en local es calor, y hubo que rediseñar la evaluación con pausas y guardado continuo (D-29, D-30).
 
 **7. Lo que debe ser exacto o privado no se le encarga a un modelo.**
-- *Evidencia:* el % de aumento, el rango y la decisión de qué sale a la nube están en código con pruebas (56 pasan). Todo lo inventado en el proyecto salió de un modelo.
+- *Evidencia:* el % de aumento, el rango y la decisión de qué sale a la nube están en código con pruebas (67 pasan). Todo lo inventado en el proyecto salió de un modelo.
 
 **8. El split brain no es "local contra nube": es poner cada tarea donde corresponde.**
 - La nota va en local por **privacidad**, sin importar quién escriba mejor. La carta va a la nube por **calidad**, por un margen que ahora está medido, y a local cuando no hay conexión.
@@ -493,9 +513,9 @@ carta-split-brain/
 │   ├── hoja.py             # lectura de las hojas de evaluación ciega
 │   ├── correr_bench.py     # evaluación B: Gemma vs Qwen en nota y extracción (se puede retomar)
 │   └── analizar.py         # tablas y gráficas de la evaluación B
-├── tests/                  # pytest (56 pruebas)
+├── tests/                  # pytest (67 pruebas, incluida una que busca claves filtradas)
 ├── docs/
-│   ├── decisiones.md       # registro de decisiones (D-01 a D-29)
+│   ├── decisiones.md       # registro de decisiones (D-01 a D-30)
 │   ├── articulo.md         # borrador del artículo
 │   ├── pasos.md            # guía para reproducir el proyecto
 │   └── img/                # diagramas, capturas y gráficas
@@ -506,7 +526,7 @@ carta-split-brain/
 
 - **Tamaño de la muestra:** 10 perfiles ficticios. Las diferencias pequeñas (Gemma contra Gemini en latencia o en una carta de la rúbrica) no son concluyentes.
 - **Entorno no controlado:** las corridas se hicieron en una computadora de uso diario. La corrida 1b muestra cuánto puede cambiar la latencia local si la máquina está ocupada.
-- **Una sola persona calificó a ciegas**, y solo dos de las cuatro columnas. La segunda lectura de fidelidad no es ciega y se hizo con ayuda de un asistente de IA. Las dos coinciden en el orden, no en las cantidades.
+- **Una sola persona calificó a ciegas**, y solo dos de las cuatro columnas, que además resultaron medir lo mismo. La segunda lectura de fidelidad no es ciega y se hizo con ayuda de un asistente de IA. Las dos coinciden en el orden, no en las cantidades.
 - **El sanitizador protege de más:** borra números de 1,000 o más aunque no sean dinero (8.5).
 - **Sin el nombre, el modelo no conoce el género** de la persona (8.5).
 - **Latencia de Gemini no del todo comparable:** incluye la red y puede incluir razonamiento interno, que en los modelos locales está apagado (D-12).

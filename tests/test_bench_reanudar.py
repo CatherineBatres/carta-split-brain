@@ -9,6 +9,7 @@ from splitbrain.local_llm import Generacion, OllamaNoDisponible
 class ClienteQueSeCae:
     limite = 10**9      # cuántas respuestas da antes de "apagarse"
     llamadas = 0
+    semillas = set()
 
     def __init__(self, modelo):
         self.modelo = modelo
@@ -19,14 +20,16 @@ class ClienteQueSeCae:
     def descargar(self):
         pass
 
-    def generar(self, prompt, sistema="", formato_json=False):
+    def generar(self, prompt, sistema="", formato_json=False, semilla=None):
+        type(self).semillas.add(semilla)
         if prompt in ("Hola", "Responde solo: listo"):
             return Generacion("listo", self.modelo, {"latencia_total_s": 0.1})
         type(self).llamadas += 1
         if type(self).llamadas > type(self).limite:
             raise OllamaNoDisponible("se apagó")
         texto = '{"puesto":"x","requisitos":[],"modalidad":"remoto"}' if formato_json else \
-            "Tu expectativa es razonable; menciónala cuando RR. HH. pregunte. " * 4
+            (f"[{self.modelo}] Tu expectativa es razonable; menciónala cuando RR. HH. pregunte. "
+             f"Ref {sum(map(ord, prompt)) % 9973}. " * 4)
         return Generacion(texto, self.modelo, {"latencia_total_s": 1.0})
 
 
@@ -60,14 +63,45 @@ def test_se_retoma_donde_se_quedo_sin_repetir(tmp_path, monkeypatch):
                     ["nota", "extraccion"], 2)
     assert sorted(claves) == sorted(plan) and len(set(claves)) == len(claves)
     assert ClienteQueSeCae.llamadas == len(plan) - 7    # no repitió lo ya hecho
+    assert {42, 43} <= ClienteQueSeCae.semillas         # cada repetición usa su propia semilla
 
 
-def test_no_borra_la_hoja_ciega_ya_calificada(tmp_path, monkeypatch):
+def test_la_hoja_ciega_conserva_notas_y_no_confunde_corridas(tmp_path, monkeypatch):
+    import csv
+    from bench.hoja import leer_hoja
     _preparar(tmp_path, monkeypatch)
     ClienteQueSeCae.limite = 10**9
-    args = dict(modelos=["a", "b"], reps=1, tareas=["nota"], simulado=False, pausa=0, cada=0)
-    cb.correr(**args)
+    base = dict(reps=1, tareas=["nota"], simulado=False, pausa=0, cada=0)
     hoja = tmp_path / "resultados" / "evaluacion_ciega.csv"
-    hoja.write_text(hoja.read_text(encoding="utf-8-sig") + "MIS NOTAS", encoding="utf-8-sig")
-    cb.correr(**args)                                # nada pendiente: solo rearma archivos
-    assert "MIS NOTAS" in hoja.read_text(encoding="utf-8-sig")
+
+    # Una hoja VIEJA, de otra corrida, con la misma cantidad de notas (10) y otros textos.
+    hoja.parent.mkdir(parents=True)
+    (hoja.parent / "crudo").mkdir()
+    with open(hoja, "w", newline="", encoding="utf-8-sig") as fh:
+        w = csv.writer(fh)
+        w.writerow(["id", "caso", "tarea", "texto", *cb.COLS_HOJA])
+        w.writerows([[f"T{i:03d}", "c01", "nota", f"nota vieja {i}", "", "", "", ""]
+                     for i in range(10)])
+    (hoja.parent / "crudo" / "clave_ciega.json").write_text(
+        json.dumps({f"T{i:03d}": "viejo" for i in range(10)}))
+
+    cb.correr(modelos=["a"], **base)                 # 10 notas nuevas del modelo "a"
+    filas = leer_hoja(hoja)
+    assert len(filas) == 10 and not any("vieja" in f["texto"] for f in filas)
+
+    filas[0]["claridad_1a5"], filas[0]["inventa_datos_si_no"] = "4", "no"   # califico una
+    texto_calificado = filas[0]["texto"]
+    with open(hoja, "w", newline="", encoding="utf-8-sig") as fh:
+        w = csv.DictWriter(fh, fieldnames=list(filas[0].keys()), delimiter=";")  # como Excel
+        w.writeheader()
+        w.writerows(filas)
+
+    cb.correr(modelos=["a", "b"], **base)            # llega el segundo modelo: 20 notas
+    filas = leer_hoja(hoja)
+    assert len(filas) == 20
+    mias = [f for f in filas if f["texto"] == texto_calificado and f["claridad_1a5"] == "4"]
+    assert mias and mias[0]["inventa_datos_si_no"] == "no"   # la calificación no se perdió
+
+    antes = hoja.read_bytes()
+    cb.correr(modelos=["a", "b"], **base)            # nada nuevo: la hoja queda intacta
+    assert hoja.read_bytes() == antes

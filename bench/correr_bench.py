@@ -5,6 +5,7 @@ Uso (versión ligera, recomendada en laptop):
     python -m bench.correr_bench --modelos gemma4:e4b          # un modelo...
     python -m bench.correr_bench --modelos qwen3.5:4b          # ...y después el otro
     python -m bench.correr_bench --estado                      # ¿cuánto falta?
+    python -m bench.correr_bench --armar                       # recalifica sin usar el modelo
 
 Por defecto mide la NOTA y la EXTRACCIÓN, con 2 repeticiones. La carta ya se midió tres
 veces en la evaluación A (comparar_tres); se puede agregar con  --tareas nota carta extraccion.
@@ -28,6 +29,7 @@ import time
 from pathlib import Path
 
 from bench import rubrica
+from bench.hoja import leer_hoja
 from splitbrain import reglas
 from splitbrain.local_llm import ClienteOllama, Generacion, OllamaNoDisponible
 from splitbrain.perfil import Perfil
@@ -38,6 +40,7 @@ from splitbrain.router import construir_payload
 RAIZ = Path(__file__).resolve().parent.parent
 CASOS = RAIZ / "bench" / "casos.json"
 TAREAS_POR_DEFECTO = ["nota", "extraccion"]
+SEMILLA = 42
 
 
 def arranque_en_frio(cliente: ClienteOllama) -> dict:
@@ -57,7 +60,7 @@ class ClienteSimulado:
         self.modelo = modelo
         self.rng = random.Random(sum(map(ord, modelo)))
 
-    def generar(self, prompt, sistema="", formato_json=False):
+    def generar(self, prompt, sistema="", formato_json=False, semilla=None):
         lat = self.rng.uniform(1, 4)
         if formato_json:
             texto = json.dumps({"puesto": "x", "requisitos": ["python", "sql"], "modalidad": "remoto"})
@@ -111,6 +114,18 @@ def _guardar(archivo: Path, fila: dict) -> None:
         os.fsync(fh.fileno())
 
 
+def calificar(tarea: str, texto: str, caso: dict) -> dict:
+    """Aplica la rúbrica VIGENTE. Se llama al armar los archivos, no al generar: así, si una
+    regla se corrige, basta con  --armar  para recalificar sin volver a usar el modelo."""
+    perfil = Perfil(**caso["perfil"])
+    if tarea == "nota":
+        return rubrica.evaluar_nota(texto, reglas.analizar(perfil))
+    if tarea == "carta":
+        return rubrica.evaluar_carta(texto, construir_payload(perfil).campos,
+                                     caso["oro"]["requisitos"])
+    return rubrica.evaluar_extraccion(texto, caso["oro"])
+
+
 def _plan(casos: list[dict], modelos: list[str], tareas: list[str], reps: int) -> list[tuple]:
     plan = []
     for modelo in modelos:
@@ -124,7 +139,7 @@ def _plan(casos: list[dict], modelos: list[str], tareas: list[str], reps: int) -
 
 def correr(modelos: list[str], reps: int, tareas: list[str], simulado: bool,
            pausa: float = 3, cada: int = 15, descanso: float = 60,
-           reiniciar: bool = False, solo_estado: bool = False) -> Path:
+           reiniciar: bool = False, solo_estado: bool = False, solo_armar: bool = False) -> Path:
     casos = json.loads(CASOS.read_text(encoding="utf-8"))
     por_id = {c["id"]: c for c in casos}
     salida = RAIZ / "resultados" / ("simulado" if simulado else "")
@@ -146,6 +161,10 @@ def correr(modelos: list[str], reps: int, tareas: list[str], simulado: bool,
         n = sum(1 for p in pendientes if p[0] == modelo)
         print(f"   {modelo}: faltan {n}")
     if solo_estado:
+        return salida
+    if solo_armar:
+        _armar(progreso, salida, crudo)
+        print(f"Archivos recalculados con la rúbrica actual en {salida}")
         return salida
 
     frio = json.loads(frio_path.read_text(encoding="utf-8")) if frio_path.exists() else {}
@@ -175,20 +194,17 @@ def correr(modelos: list[str], reps: int, tareas: list[str], simulado: bool,
                 "extraccion": (prompt_extraccion(perfil.oferta_texto), SISTEMA_EXTRACCION, True),
             }[tarea]
             try:
-                g = cliente.generar(prompt, sistema, formato_json=js)
+                # D-30: con la misma semilla, las repeticiones salían idénticas palabra por
+                # palabra. Con 42 + rep, cada repetición es una muestra distinta y reproducible.
+                g = cliente.generar(prompt, sistema, formato_json=js, semilla=SEMILLA + rep)
             except OllamaNoDisponible as e:
                 print(f"⚠️ Ollama dejó de responder ({str(e)[:80]}). Lo hecho ya está guardado; "
                       "vuelve a correr el mismo comando para continuar.")
                 _armar(progreso, salida, crudo)
                 return salida
-            if tarea == "nota":
-                cal = rubrica.evaluar_nota(g.texto, hechos)
-            elif tarea == "carta":
-                cal = rubrica.evaluar_carta(g.texto, campos, caso["oro"]["requisitos"])
-            else:
-                cal = rubrica.evaluar_extraccion(g.texto, caso["oro"])
+            cal = calificar(tarea, g.texto, caso)
             _guardar(progreso, {"modelo": modelo, "caso": cid, "tarea": tarea, "rep": rep,
-                                **g.metricas, **cal, "texto": g.texto})
+                                "orden": len(hechas) + contador, **g.metricas, "texto": g.texto})
             contador += 1
             print(f"[{modelo}] {cid} {tarea} r{rep}: calidad={cal['calidad']} "
                   f"lat={g.metricas.get('latencia_total_s')}s   ({contador}/{len(pendientes)})")
@@ -212,7 +228,9 @@ def _armar(progreso: Path, salida: Path, crudo: Path) -> None:
     filas = _leer_progreso(progreso)
     if not filas:
         return
-    metricas = [{k: v for k, v in f.items() if k != "texto"} for f in filas]
+    por_id = {c["id"]: c for c in json.loads(CASOS.read_text(encoding="utf-8"))}
+    metricas = [{**{k: v for k, v in f.items() if k != "texto"},
+                 **calificar(f["tarea"], f["texto"], por_id[f["caso"]])} for f in filas]
     columnas = sorted({k for f in metricas for k in f}, key=lambda k: (k not in
                       ("modelo", "caso", "tarea", "rep"), k))
     with open(salida / "bench_metricas.csv", "w", newline="", encoding="utf-8-sig") as fh:
@@ -226,24 +244,40 @@ def _armar(progreso: Path, salida: Path, crudo: Path) -> None:
     _hoja_ciega(textos, salida, crudo)
 
 
+COLS_HOJA = ["claridad_1a5", "utilidad_1a5", "inventa_datos_si_no", "comentario"]
+
+
 def _hoja_ciega(textos: list[dict], salida: Path, crudo: Path) -> None:
     """Hoja para calificar a mano SIN saber qué modelo escribió cada texto (D-15)."""
     # D-28: solo las NOTAS. Las cartas ya se califican a ciegas en la evaluación A.
     evaluables = [t for t in textos if t["tarea"] == "nota"]
     hoja, clave_path = salida / "evaluacion_ciega.csv", crudo / "clave_ciega.json"
-    if hoja.exists() and clave_path.exists():
-        if len(json.loads(clave_path.read_text(encoding="utf-8"))) == len(evaluables):
-            return  # ya existe con las mismas notas: no se toca, podría tener tus calificaciones
+
+    # D-30: si ya existe una hoja, se conservan las calificaciones de las notas que siguen
+    # siendo las mismas (se reconocen por su texto). Antes se comparaba solo la cantidad de
+    # notas, y una hoja vieja de otro modelo podía pasar por actual.
+    previas: dict[tuple, list[str]] = {}
+    if hoja.exists():
+        viejas = leer_hoja(hoja)
+        for f in viejas:
+            notas = [f.get(c, "") for c in COLS_HOJA]
+            if any(notas):
+                previas[(f.get("caso", ""), f.get("texto", ""))] = notas
+        en_hoja = sorted((f.get("caso", ""), f.get("texto", "")) for f in viejas)
+        if clave_path.exists() and en_hoja == sorted((t["caso"], t["texto"].strip())
+                                                     for t in evaluables):
+            return  # mismas notas: no se toca
+
     random.Random(7).shuffle(evaluables)
     clave = {}
     with open(hoja, "w", newline="", encoding="utf-8-sig") as fh:
         w = csv.writer(fh)
-        w.writerow(["id", "caso", "tarea", "texto", "claridad_1a5", "utilidad_1a5",
-                    "inventa_datos_si_no", "comentario"])
+        w.writerow(["id", "caso", "tarea", "texto", *COLS_HOJA])
         for i, t in enumerate(evaluables):
             id_ = f"T{i:03d}"
             clave[id_] = t["modelo"]
-            w.writerow([id_, t["caso"], t["tarea"], t["texto"], "", "", "", ""])
+            w.writerow([id_, t["caso"], t["tarea"], t["texto"],
+                        *previas.get((t["caso"], t["texto"].strip()), [""] * len(COLS_HOJA))])
     clave_path.write_text(json.dumps(clave, indent=2), encoding="utf-8")
 
 
@@ -257,8 +291,10 @@ if __name__ == "__main__":
     ap.add_argument("--cada", type=int, default=15, help="descanso largo cada N respuestas")
     ap.add_argument("--descanso", type=float, default=60, help="segundos del descanso largo")
     ap.add_argument("--estado", action="store_true", help="solo muestra cuánto falta")
+    ap.add_argument("--armar", action="store_true",
+                    help="recalifica y reescribe los archivos con lo ya generado, sin usar el modelo")
     ap.add_argument("--reiniciar", action="store_true", help="borra el progreso y empieza de cero")
     ap.add_argument("--simulado", action="store_true")
     a = ap.parse_args()
     correr(a.modelos, a.reps, a.tareas, a.simulado, a.pausa, a.cada, a.descanso,
-           a.reiniciar, a.estado)
+           a.reiniciar, a.estado, a.armar)

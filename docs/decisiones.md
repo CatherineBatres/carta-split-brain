@@ -36,6 +36,7 @@ Estado: ✅ aceptada · ❌ descartada · ⏳ pendiente de validar con datos del
 | D-27 | No pisar corridas, descargar modelos entre corridas, memoria según Ollama y alerta sin valor de puntaje | ✅ | Medición (errores reales) |
 | D-28 | Lectura de las 30 cartas: fidelidad, rúbrica saturada, costo de la privacidad; la carta se queda en la nube | ✅ | 🎯 🔒 (hallazgos reales) |
 | D-29 | Evaluación ciega: la carta se queda en la nube por margen estrecho. Evaluación B ligera y con guardado continuo | ✅ | 🎯 📴 (error real) |
+| D-30 | Clave casi publicada; caída de rendimiento bajo carga; correcciones a la rúbrica de la nota y a la medición | ✅ | 🔒 ⚡ (errores reales) |
 
 ---
 
@@ -304,3 +305,41 @@ Estado: ✅ aceptada · ❌ descartada · ⏳ pendiente de validar con datos del
 - **Por qué no simplemente "dejar que enfríe y repetir":** un apagón por calor repetido puede dañar el equipo, y sin guardado continuo se perdería todo otra vez.
 - **Por qué no correrlo en la nube o en otra máquina:** el área del proyecto es medir modelos locales en el equipo real; el límite térmico es parte del resultado.
 - **Lección para el artículo:** en la nube, medir más es mandar más peticiones; en local, es calor.
+
+## D-30 · Una clave casi publicada, un "modo lento" del equipo y cuatro correcciones de medición
+
+### 1. La clave de Gemini quedó en `.env.example` (error real)
+- **Qué pasó:** la clave real se pegó en `.env.example`, la plantilla que sí se sube, en vez de quedar solo en `.env`. Al hacer `git push`, la protección de GitHub detectó la clave y rechazó la subida. No llegó a publicarse.
+- **Cómo se corrigió:** se devolvió el texto de ejemplo a la plantilla y se rehízo el commit a partir de lo que ya estaba en GitHub (`git reset --soft origin/main`), para que ningún commit con la clave se subiera. *Por qué no usar el enlace "permitir el secreto" de GitHub:* habría publicado la clave en un repositorio público.
+- **Para que no se repita:** `tests/test_secretos.py` falla si `.env.example` no trae el texto de ejemplo, si `.env` no está en `.gitignore`, o si algún archivo del proyecto contiene algo con forma de clave de Google. Regla de trabajo: `pytest` antes de cada `git push`.
+- **Por qué no confiar solo en GitHub:** esa protección funcionó, pero es la última barrera y depende del proveedor. La prueba local avisa antes de hacer el commit.
+- **Ironía útil para el artículo:** la app protege el salario con tres capas, y lo que casi se filtra fue la configuración de quien la construyó.
+
+### 2. El equipo tiene un "modo lento" bajo carga sostenida (hallazgo)
+Corrida larga de `qwen3.5:4b`: 87 respuestas seguidas, sin pausas (`resultados/corrida_larga_qwen/`).
+
+| Tramo | Respuestas | Duración | Tokens/s | Carta |
+|---|---|---|---|---|
+| Normal | 1–55 | 10.7 min | 20.0 | 20 s |
+| Lento | 56–75 | 10.6 min | 6.9 | 59 s |
+| Recuperado | 76–87 | 1.6 min | 20.5 | 20 s |
+
+- **Interpretación:** mismo modelo, mismo prompt, misma memoria en GPU; cambia la velocidad. Es el patrón de un equipo que limita su rendimiento por temperatura. No se midió la temperatura, así que queda como causa probable.
+- **Corrige a D-27:** la hipótesis de que en la corrida 1b los dos modelos no cabían juntos en la GPU pierde fuerza. Los 58 s de Qwen coinciden con este modo lento (59 s), y la caída empezó en la última carta de Gemma (30 s en vez de 10).
+- **Corrige a D-28 y D-29:** se retira la afirmación de que Gemma "aguanta mejor" una máquina ocupada. Los dos modelos se frenan en la misma proporción; a Qwen le tocó correr durante la caída.
+- **Consecuencia para medir:** las pausas de D-29 no son solo para proteger el equipo: sin ellas, un tercio de las mediciones puede salir tres veces más lento por una causa ajena al modelo. `bench/analizar.py` ahora marca las respuestas "a ritmo lento" y dibuja la velocidad en orden de ejecución (`ritmo.png`).
+
+### 3. Cuatro correcciones de medición que salieron de esa corrida
+1. **Las repeticiones eran idénticas.** Con semilla fija (42), las tres repeticiones de cada texto salían iguales palabra por palabra: servían para medir latencia, no calidad. **Decisión:** semilla `42 + repetición`. Cada repetición es una muestra distinta y sigue siendo reproducible. *Por qué no quitar la semilla:* se perdería la reproducibilidad.
+2. **El tiempo al primer token estaba inflado a la baja.** En las repeticiones 2 y 3 el prompt ya está en la caché de Ollama: 0.3 s contra 1.3–3.7 s en la primera. **Decisión:** reportar el primer token solo de la primera repetición.
+3. **`cita_porcentaje` fallaba por diseño en 3 de 10 perfiles.** Para un cambio de 16.67 % buscaba "17", pero a la nota se le entrega "+16.7 %" y lo natural es que cite eso. **Decisión:** aceptar el valor con un decimal, truncado o redondeado (`rubrica.cita_el_porcentaje`).
+4. **"ISO 14001" contaba como cifra inventada.** **Decisión:** en la nota solo cuenta como cifra lo que se presenta como dinero (con moneda o con "k"/"mil").
+- **Para no repetir corridas por un cambio de regla:** la evaluación B guarda el texto de cada respuesta y califica al armar los archivos. `python -m bench.correr_bench --armar` recalifica sin usar el modelo.
+- **Los textos crudos ya se publican:** se quitó `resultados/crudo/` de `.gitignore`. Son perfiles ficticios, y sin ellos nadie podría verificar la calificación.
+- **La hoja ciega se reconoce por su contenido:** antes se comparaba la cantidad de notas, y una hoja vieja con 10 notas de un modelo podía pasar por la actual con 10 notas de otro. Ahora se comparan caso y texto, y al regenerarla se conservan las calificaciones ya puestas.
+
+### 4. Comparación carta por carta de las dos lecturas de fidelidad (cierra el pendiente de D-29)
+- De 29 cartas con respuesta: 7 marcadas por ambas lecturas, 9 solo por la ciega, 0 solo por la estricta, 13 por ninguna.
+- **Las 7 de la lectura estricta están contenidas en las 16 de la ciega.** Las 9 adicionales (3 por modelo) son afirmaciones más suaves.
+- **La nota "lista para enviar" no es independiente de "inventa":** solo se usaron 3 y 5, y casi siempre 3 cuando la carta inventa (una excepción). El 4.40 / 4.20 / 3.40 es, en la práctica, otra forma de escribir 3, 5 y 8 cartas marcadas.
+- **Consecuencia:** el empate de reglas de D-29 (nota contra fidelidad) no era tal: son la misma señal. La decisión no cambia, y su base queda más clara: Gemini tuvo 2 cartas menos marcadas que Gemma, de 10.

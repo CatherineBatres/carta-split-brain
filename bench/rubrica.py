@@ -49,7 +49,10 @@ def cifras_inventadas(texto: str, h: Hechos) -> list[str]:
     permitidos = h.numeros_permitidos()
     malas = []
     for m in extraer_montos(texto):
-        if m.es_dinero_probable and not any(es_mismo_monto(m.valor, p, 0.01) for p in permitidos):
+        # D-30: solo cuenta lo que se presenta como dinero (con moneda o con k/mil).
+        # Antes, "ISO 14001" contaba como cifra inventada.
+        if (m.con_moneda or m.con_sufijo) and not any(
+                es_mismo_monto(m.valor, p, 0.01) for p in permitidos):
             malas.append(m.texto.strip())
     if h.incremento_pct is not None:
         for p in re.findall(r"(\d+(?:[.,]\d+)?)\s?%", texto):
@@ -58,10 +61,21 @@ def cifras_inventadas(texto: str, h: Hechos) -> list[str]:
     return malas
 
 
+def cita_el_porcentaje(texto: str, pct: float) -> bool:
+    """¿La nota cita el % de cambio? Acepta el valor con un decimal, truncado o redondeado.
+
+    D-30: antes solo aceptaba el redondeo. Para 16.67 % buscaba "17", y una nota que citaba
+    "16.7 %" (tal como se le dio) perdía el punto. Fallaba por diseño en 3 de 10 perfiles.
+    """
+    a = abs(pct)
+    enteros = {int(a), round(a)}
+    patron = "|".join(str(e) for e in sorted(enteros))
+    return re.search(rf"(?<![\d.,])(?:{patron})(?:[.,]\d)?\s?%", texto) is not None
+
+
 def evaluar_nota(texto: str, h: Hechos) -> dict:
     n = len(_palabras(texto))
-    pct_ok = h.incremento_pct is None or bool(
-        re.search(rf"\b{abs(round(h.incremento_pct))}([.,]\d)?\s?%", texto))
+    pct_ok = h.incremento_pct is None or cita_el_porcentaje(texto, h.incremento_pct)
     inventadas = cifras_inventadas(texto, h)
     c = {
         "n_palabras": n,

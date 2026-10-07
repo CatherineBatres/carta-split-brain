@@ -57,12 +57,17 @@ git push -u origin main
 ```
 La primera vez se abre una ventana para iniciar sesión en GitHub.
 
-**Cada vez que termines algo** (siempre los mismos tres comandos):
+**Cada vez que termines algo** (siempre los mismos cuatro comandos):
 ```bash
+pytest -q
 git add -A
 git commit -m "Qué cambió y por qué"
 git push
 ```
+
+`pytest` va primero porque una de las pruebas revisa que ninguna clave real esté en los archivos que se suben. Si falla, no hagas el push.
+
+**Dónde va la clave.** Solo en `.env`. El archivo `.env.example` es la plantilla que sí se sube: debe decir `GEMINI_API_KEY=pega_tu_clave_de_aistudio_aqui`. Si GitHub rechaza un push con "Push cannot contain secrets", **no uses el enlace para permitirlo**: quita la clave del archivo y rehaz el commit.
 
 **Mensajes sugeridos para lo que viene**
 | Cuándo | Mensaje |
@@ -130,8 +135,8 @@ python -m bench.comparar_tres --reevaluar --carpeta tres_modelos_v2
 - corre **un modelo por vez** y deja descansar el equipo unos minutos entre los dos.
 
 ```bash
-python -m bench.correr_bench --simulado              # 1 minuto: confirma que todo corre
-python -m bench.correr_bench --modelos gemma4:e4b    # unos 7 minutos
+python -m bench.correr_bench --simulado                          # 1 minuto: confirma que todo corre
+python -m bench.correr_bench --modelos gemma4:e4b --reiniciar    # unos 7 minutos
 ```
 Espera 5 minutos y luego:
 ```bash
@@ -144,13 +149,18 @@ python -m bench.correr_bench --estado
 ```
 Si se apaga otra vez, no insistas: avisa y bajamos la carga (por ejemplo `--cada 8 --descanso 120`).
 
+`--reiniciar` va solo en el primer comando: borra el progreso de corridas anteriores. Si luego cambia una regla de calificación, no hace falta volver a generar:
+```bash
+python -m bench.correr_bench --armar
+```
+
 Luego:
 1. Abre `resultados\evaluacion_ciega.csv`: son **20 notas de negociación** cortas, revueltas. Llena `claridad_1a5`, `utilidad_1a5` e `inventa_datos_si_no` (¿cita una cifra que no venía en los datos?). Unos 15 minutos.
 2. Genera tablas y gráficas:
    ```bash
    python -m bench.analizar
    ```
-   Escribe `resultados\resumen.md` y las gráficas en `docs\img\`.
+   Escribe `resultados\resumen.md` y las gráficas en `docs\img\` (calidad, latencia, memoria y ritmo). Mira la tabla "Ritmo": si muchas respuestas salieron "a ritmo lento", el equipo se calentó y conviene repetir con más descansos.
 3. Con eso se escribe el veredicto final: cuál gana, por qué y **en qué pierde el ganador**.
 
 ## Fase 6 · Artículo y demo
