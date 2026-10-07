@@ -1,7 +1,5 @@
 # Tu salario no tiene por qué viajar a la nube: cómo construí una app "split brain" con modelos locales
 
-*Borrador · Para publicar en Medium/Substack · Las marcas ⟦…⟧ indican capturas o datos que faltan.*
-
 ---
 
 ## El problema: le estás contando todo a un servidor
@@ -12,7 +10,9 @@ Ahora imagina otra opción: la parte de la app que necesita saber tu salario cor
 
 En este artículo te cuento cómo construí una app así en Python, qué encontré al comparar dos modelos locales (Gemma y Qwen) contra uno en la nube (Gemini) y en qué me equivoqué por el camino. Adelanto: mis mediciones me dieron la razón, pero por un motivo distinto al que yo tenía.
 
-⟦CAPTURA: la app con la carta a la izquierda y la nota privada a la derecha⟧
+![La app después de generar: a la izquierda la carta escrita por Gemini; a la derecha la nota privada escrita por el modelo local y, debajo, los datos exactos calculados por reglas](img/app_nube_ok_resultado.png)
+
+*La app con una persona ficticia. A la izquierda, la carta que escribió la nube. A la derecha, la nota privada que escribió mi computadora.*
 
 ## Qué hace la app
 
@@ -90,23 +90,27 @@ Por eso la decisión la toma **código explícito**, en tres capas:
 2. **Sanitizador:** reemplaza tu nombre por `[[NOMBRE]]`, tu empresa por `[[EMPLEADOR_ACTUAL]]` y cualquier monto por `[MONTO]`.
 3. **Guardián:** revisa el paquete final. Si encuentra tu salario (en cualquier formato), bloquea el envío y la carta se hace en local.
 
-⟦CAPTURA: el panel "Exactamente lo que salió a la nube" con el JSON sanitizado⟧
+La app te lo enseña. Este es el panel de "Exactamente lo que salió a la nube" para una persona ficticia que escribió su nombre, su empleador, su salario, su correo y su teléfono dentro del texto de su experiencia:
+
+![El panel de lo que salió a la nube: dice "Enviado" y muestra el texto con el nombre, el empleador, los montos y el correo cambiados por marcadores; abajo, el conteo de siete reemplazos](img/app_nube_ok_panel.png)
+
+Ella escribió *"Soy Ana Lucía Pérez. Llevo 4 años en Distribuidora El Quetzal… hoy gano Q9,000 al mes"*. A la nube le llegó *"Soy [[NOMBRE]]. Llevo 4 años en [[EMPLEADOR_ACTUAL]]… hoy gano [MONTO] al mes"*. Siete reemplazos, contados abajo.
 
 Y la nube escribe `[[NOMBRE]]` al firmar. Tu computadora lo cambia por tu nombre real al final. La carta sale firmada sin que la nube sepa quién eres.
 
-## El error que me enseñó más
+## Los errores que más me enseñaron
 
-⟦Elegir UNO o DOS para el artículo; todos ocurrieron al construir la app⟧
+Cinco, en el orden en que aparecieron. El último es el más importante.
 
-**Opción A — Los años que parecían teléfonos.** Mi regex para teléfonos guatemaltecos buscaba el patrón `dddd-dddd`. Al escribir las pruebas con un perfil ficticio que decía "trabajé de 2019-2023", el sanitizador lo convertía en `[TELÉFONO]`. La carta perdía información útil por proteger algo que no era sensible. Lo corregí con una excepción para rangos de años, y ahora hay una prueba que lo vigila. Moraleja: **una regla de privacidad también tiene falsos positivos, y cuestan calidad.**
+**1. Los años que parecían teléfonos.** Mi regex para teléfonos guatemaltecos buscaba el patrón `dddd-dddd`. Al escribir las pruebas con un perfil ficticio que decía "trabajé de 2019-2023", el sanitizador lo convertía en `[TELÉFONO]`. La carta perdía información útil por proteger algo que no era sensible. Lo corregí con una excepción para rangos de años, y ahora hay una prueba que lo vigila. Moraleja: **una regla de privacidad también tiene falsos positivos, y cuestan calidad.**
 
-**Opción B — El salario disfrazado de logro.** Un perfil de prueba decía "ahorré Q150,000 al año". Suena inocente, pero es exactamente 12 × Q12,500: el salario anual. En Guatemala además se habla de salario ×14 (aguinaldo y bono 14). Desde entonces el guardián compara contra el monto mensual, ×12 y ×14.
+**2. El salario disfrazado de logro.** Un perfil de prueba decía "ahorré Q150,000 al año". Suena inocente, pero es exactamente 12 × Q12,500: el salario anual. En Guatemala además se habla de salario ×14 (aguinaldo y bono 14). Desde entonces el guardián compara contra el monto mensual, ×12 y ×14.
 
-**Opción C — La carta que decía "cobro [MONTO]".** Todas mis pruebas de privacidad pasaban. Entonces corrí la app de punta a punta, sin internet y sin Ollama, para ver el peor caso. La carta decía: *"llevo 5 años en mi empresa y cobro [MONTO]. Tel [TELÉFONO]"*. Mi sistema protegía perfectamente el dato… y dejaba el hueco a la vista. Las pruebas revisaban que nada sensible saliera, pero ninguna revisaba que la carta se pudiera enviar. Ahora las frases con datos censurados se eliminan antes de redactar, y hay una prueba para eso. Moraleja: **probar la privacidad no es lo mismo que probar la experiencia.**
+**3. La carta que decía "cobro [MONTO]".** Todas mis pruebas de privacidad pasaban. Entonces corrí la app de punta a punta, sin internet y sin Ollama, para ver el peor caso. La carta decía: *"llevo 5 años en mi empresa y cobro [MONTO]. Tel [TELÉFONO]"*. Mi sistema protegía perfectamente el dato… y dejaba el hueco a la vista. Las pruebas revisaban que nada sensible saliera, pero ninguna revisaba que la carta se pudiera enviar. Ahora las frases con datos censurados se eliminan antes de redactar, y hay una prueba para eso. Moraleja: **probar la privacidad no es lo mismo que probar la experiencia.**
 
-**Opción D — Medí la carga del modelo creyendo que medía su velocidad.** En mi primera prueba real, Qwen tardó 33.5 s en un perfil y 13.3 s en el siguiente. ¿El primer perfil era más difícil? No: la primera vez que usas un modelo local, Ollama tiene que cargarlo del disco a la memoria, y yo estaba cronometrando eso también. Además mi script alternaba entre modelos en cada perfil. Lo corregí: ahora cada modelo corre todos los perfiles seguidos, después de una llamada de "calentamiento" que no se mide, y el arranque en frío se reporta aparte. Moraleja: **en modelos locales, la primera respuesta y las siguientes son dos números distintos, y hay que decir cuál estás mostrando.**
+**4. Medí la carga del modelo creyendo que medía su velocidad.** En mi primera prueba real, Qwen tardó 33.5 s en un perfil y 13.3 s en el siguiente. ¿El primer perfil era más difícil? No: la primera vez que usas un modelo local, Ollama tiene que cargarlo del disco a la memoria, y yo estaba cronometrando eso también. Además mi script alternaba entre modelos en cada perfil. Lo corregí: ahora cada modelo corre todos los perfiles seguidos, después de una llamada de "calentamiento" que no se mide, y el arranque en frío se reporta aparte. Moraleja: **en modelos locales, la primera respuesta y las siguientes son dos números distintos, y hay que decir cuál estás mostrando.**
 
-**Opción E — Mi regla castigó una despedida correcta y dejó pasar una mentira.** ⭐ *(recomendada: es la más propia de este proyecto)*
+**5. Mi regla castigó una despedida correcta y dejó pasar una mentira.**
 
 En mi primera prueba, el único punto perdido fue de Gemini, el modelo de la nube: falló el criterio "saludo y despedida". Estuve a punto de escribir "la nube falló". Antes fui a leer la carta. Terminaba así:
 
@@ -163,7 +167,7 @@ Corrí todo tres veces. En total, 90 cartas.
 | Qwen 3.5 4B | 🖥️ local | 3.40 | 8 de 10 | 1.00 | 22.8 s | 19.3–24.2 s | 20.1 | 3.0 GB |
 | Gemini | ☁️ nube | 4.40 | 3 de 9 | 1.00 | 8.0 s | 7.2–18.2 s | — | No usa tu equipo |
 
-Mi equipo: una laptop con Ryzen 7 4800H, 16 GB de RAM y ⟦tarjeta gráfica⟧, con Ollama 0.35.1. Los dos modelos locales cupieron completos en la tarjeta gráfica.
+Mi equipo: una laptop con Ryzen 7 4800H y 16 GB de RAM, con Ollama 0.35.1. Los dos modelos locales cupieron completos en la tarjeta gráfica.
 
 ### Las dos columnas que no salen de ningún script
 
@@ -237,7 +241,7 @@ Ninguna de mis pruebas de privacidad lo detectó, y es lógico: no se filtró na
 - Para el género: pedirle al modelo que, si no sabe, escriba sin adjetivos de género. Es lo que Gemini hizo por su cuenta, y evita enviar un dato personal más a la nube.
 - Para los montos: tratar un número como dinero solo si cerca hay una palabra de dinero ("gano", "salario", "al mes"). El guardián seguiría bloqueando el salario en cualquier formato.
 
-No las apliqué en medio de la evaluación a propósito. Si cambio lo que reciben los modelos entre una corrida y otra, ya no puedo comparar las corridas entre sí. Primero termino de medir con las reglas actuales; después corrijo. ⟦Actualizar cuando estén aplicadas, con el antes y el después.⟧
+No las apliqué en medio de la evaluación a propósito. Si cambio lo que reciben los modelos entre una corrida y otra, ya no puedo comparar las corridas entre sí. Terminé de medir con las reglas actuales; las dos correcciones quedan como el siguiente paso.
 
 ### Errores míos en esta misma sección
 
@@ -309,7 +313,7 @@ Aquí hay un error mío. Yo califiqué esas notas a ciegas, con una guía que pr
 
 Mi guía nunca preguntó **para quién estaba escrita la nota**. De las seis notas de Qwen dirigidas a la empresa que me tocó calificar, cuatro se llevaron la nota máxima. La del salario con un dígito menos sí la detecté: le puse 1.
 
-También fui descuidada con la hoja: dejé sin llenar la columna de claridad y en la de "¿inventa datos?" marqué "sí" en las veinte, así que esa columna no distingue nada y no la uso. De mi evaluación a ciegas solo queda en pie la utilidad. ⟦Cathy: revisa que este párrafo cuente lo que pasó; si fue otra cosa, cámbialo.⟧
+Mi hoja tiene además otro límite: la columna de claridad quedó sin llenar y la de "¿inventa datos?" quedó con "sí" en las veinte notas, así que ninguna de las dos distingue entre modelos y no las uso. De mi evaluación a ciegas solo queda en pie la utilidad.
 
 Moraleja, por segunda vez en este proyecto: **una evaluación, automática o humana, solo ve lo que le preguntas.**
 
@@ -325,7 +329,9 @@ Lo cambié así:
 - Si la nota trae una cifra que no viene de los datos, la app **avisa**. El "Q1,100" ya no pasaría en silencio.
 - Si la nota parece un mensaje para la empresa, también avisa: *"Es solo para ti: no la copies ni la envíes."*
 
-⟦CAPTURA: la nota privada con el bloque "Datos exactos (calculados por reglas)" debajo⟧
+![La nota privada escrita por el modelo local, sin ninguna cifra, y debajo el bloque "Datos exactos (calculados por reglas, sin modelo)" con el +16.7 %, el rango de la oferta y cuándo mencionarla](img/app_nota_datos_exactos.png)
+
+Así se ve. Arriba, la nota de Gemma: le habla a la persona, le da ánimo y no trae un solo número. Abajo, lo que puso mi código: de Q9,000 a Q10,500 es un +16.7 %, razonable y dentro del rango. Cada parte hace lo que sabe hacer.
 
 Con eso, el defecto de Gemma queda cubierto: las cifras que no escribe aparecen al lado. El de Qwen solo se puede avisar. Por eso Gemma sigue siendo mi modelo para la nota, aunque haya perdido en los números.
 
@@ -375,7 +381,7 @@ Dos líneas planas. La misma laptop, los mismos modelos.
 
 Si lo local tiene su costo (el calor), la nube tiene el suyo: a veces no está.
 
-No lo planeé. Estaba probando la app normalmente, con internet y con mi clave configurada, y al presionar **Generar** tardó más de lo habitual. Cuando terminó, vi esto:
+No lo planeé. Estaba probando la app con otro ejemplo, con internet y con mi clave configurada, y al presionar **Generar** tardó más de lo habitual. (Estas capturas son de una versión anterior de la app, sin el bloque de datos exactos.) Cuando terminó, vi esto:
 
 ![La app después de generar: la carta y la nota aparecen firmadas por el modelo local, y debajo un aviso amarillo dice que la nube falló con un error 504 y que se usó el modelo local](img/app_nube_falla_carta.png)
 

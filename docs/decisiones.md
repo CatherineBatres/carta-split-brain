@@ -485,3 +485,27 @@ Corrida larga de `qwen3.5:4b`: 87 respuestas seguidas, sin pausas (`resultados/c
 
 Total de pruebas: 83.
 
+## D-34 · Cierre: capturas con la nube funcionando, y el artículo se queda en el repositorio
+
+### 1. Cambio de alcance
+- **Qué cambió:** no se graba un video de demostración ni se publica el artículo en una plataforma externa.
+- **Decisión:** el artículo es `docs/articulo.md` y se lee en GitHub, donde se ven sus imágenes y tablas. El README lo enlaza directamente. La demostración se hace en vivo con `docs/demo.md` y los formularios de ejemplo (D-32).
+- **Consecuencia:** se quitó del README el enlace al borrador en Google Docs, que había quedado desactualizado y era privado. Ese documento ya no hace falta.
+- **Pendientes del artículo que se cerraron:** las tres capturas; la lista de errores pasó de "elegir uno" a contar los cinco; la frase sobre la tarjeta gráfica ya no depende de un dato sin registrar.
+
+### 2. Prueba con la nube respondiendo (formulario de ejemplo 1)
+| Paso | Quién | Tiempo |
+|---|---|---|
+| Requisitos | Gemma | 15.0 s (12.6 de carga + 2.4) |
+| Nota | Gemma | 5.0 s |
+| Carta | Gemini | 15.1 s (424 tokens de entrada, 296 de salida) |
+
+- **Sanitizador:** 7 reemplazos (3 montos, 1 correo, 1 teléfono, 1 nombre, 1 empleador), los mismos que anuncia `docs/demo.md`. El panel dice "Enviado ✅".
+- **Regla 6:** la carta de Gemini expresa disposición ("alinearme… incluyendo los procesos ante la SAT") y no afirma tener el CPA ni dominar Excel. Agrega un adorno menor.
+- **D-31 en uso:** la nota de Gemma no trae cifras y, debajo, las reglas muestran +16.7 %, razonable y dentro del rango. No saltó ningún aviso, y es correcto: la nota le habla a la persona y no trae cifras ajenas.
+- **Corrección al guion:** `docs/demo.md` decía "unos 15 segundos con la nube". Esta prueba tardó 22.5 s con el modelo ya cargado, porque Gemini tardó 15.1 s. Ahora dice "entre 15 y 25 segundos".
+
+### 3. Lo que no se pudo cerrar
+- **El modelo de la tarjeta gráfica** no quedó registrado. Los documentos dicen lo que sí se sabe: Ollama reporta los dos modelos al 100 % en la GPU.
+- **Las tres mejoras al prompt de la nota (D-31)** y **las dos del sanitizador y el género (D-28)** siguen propuestas y sin aplicar.
+

@@ -182,6 +182,5 @@ Para las demostraciones en vivo hay cinco formularios ficticios que se cargan de
    | 5 | (Opcional) La barra lateral con Ollama ✅ e Internet ✅ | Sin cambiar nada |
 
    Antes de tomar cada captura revisa que no se vea tu clave de Gemini, tu correo ni otras ventanas. No presiones el botón **Deploy** de arriba a la derecha.
-2. Llena los ⟦PENDIENTE⟧ de `docs\articulo.md` y publícalo en Medium o Substack.
-3. Graba un video corto (con conexión → sin conexión) y súbelo.
-4. Pega los dos links al inicio del `README.md`, y haz el último commit y push.
+2. Guarda las capturas en `docs\img\` y enlázalas desde `README.md` y `docs\articulo.md`.
+3. Haz el último commit y push. El artículo se lee directamente en GitHub: [`articulo.md`](articulo.md).

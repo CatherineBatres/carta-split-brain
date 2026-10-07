@@ -5,7 +5,7 @@ App que genera una **carta de interés** para acompañar tu CV y una **nota priv
 > **Tu salario nunca sale de tu computadora.** Hay pruebas automatizadas que lo demuestran.
 
 - ▶️ **Abrir la app:** `streamlit run app.py` y luego [http://127.0.0.1:8501](http://127.0.0.1:8501) en el navegador ([paso a paso](#4-correr-la-app))
-- 📝 **Artículo:** [borrador en Google Docs](https://docs.google.com/document/d/1XtgVbPtav0GUsPADeTeq1btN52LrwP3H2yMmbkSToLM/edit) · fuente en [`docs/articulo.md`](docs/articulo.md)
+- 📝 **Artículo:** [Tu salario no tiene por qué viajar a la nube](docs/articulo.md)
 - 🧭 **Todas las decisiones y su porqué:** [`docs/decisiones.md`](docs/decisiones.md)
 - 🪜 **Guía para reproducir el proyecto desde cero:** [`docs/pasos.md`](docs/pasos.md)
 - 🎬 **Guion y formularios de ejemplo para demostraciones:** [`docs/demo.md`](docs/demo.md)
@@ -89,9 +89,39 @@ sequenceDiagram
 | Sin internet | 🖥️ Ollama | 🖥️ Ollama |
 | Sin internet y sin Ollama | 📄 Plantilla | 📐 Reglas |
 
+### La app funcionando, con la nube
+
+Formulario de ejemplo 1 (persona y empresas ficticias), con la nube encendida.
+
+![La app después de generar: a la izquierda la carta escrita por Gemini, a la derecha la nota privada escrita por gemma4:e4b y, debajo de la nota, el bloque "Datos exactos (calculados por reglas, sin modelo)"](docs/img/app_nube_ok_resultado.png)
+
+| Paso | Quién lo hizo | Resultado | Tiempo |
+|---|---|---|---|
+| Requisitos de la oferta | 🖥️ Gemma | CPA colegiado · Excel avanzado · manejo de SAT | 15.0 s (12.6 s de carga del modelo + 2.4 s) |
+| Nota privada | 🖥️ Gemma | Le habla a la persona; no trae cifras | 5.0 s |
+| Datos exactos | 🖥️ Reglas | De Q9,000 a Q10,500: **+16.7 %**, razonable, dentro del rango de Q10,000 a Q12,000 | Instantáneo |
+| Sanitizador y guardián | 🖥️ Reglas | 7 reemplazos; envío aprobado | Instantáneo |
+| Carta | ☁️ Gemini | 296 tokens; el nombre y el empleador los repuso la computadora | 15.1 s |
+
+![El panel "Exactamente lo que salió a la nube": dice "Enviado", muestra el envío con el nombre, el empleador, los montos y el correo reemplazados por marcadores, y cuenta 3 montos, 1 correo, 1 teléfono, 1 nombre y 1 empleador](docs/img/app_nube_ok_panel.png)
+
+- **Lo que no salió.** En el formulario, la experiencia decía *"Soy Ana Lucía Pérez. Llevo 4 años en Distribuidora El Quetzal… hoy gano Q9,000 al mes. Pueden escribirme a ana.perez@correo.com o al 5555-1234"*. A Gemini le llegó *"Soy [[NOMBRE]]. Llevo 4 años en [[EMPLEADOR_ACTUAL]]… hoy gano [MONTO] al mes…"*. Los campos del salario no aparecen en el envío.
+- **La carta no afirma lo que la persona no dijo.** La oferta pedía CPA colegiado, Excel avanzado y SAT. La carta ofrece *"una excelente disposición para alinearme de inmediato a sus estándares, incluyendo los procesos ante la SAT"*: interés, no dominio (regla 6 del prompt). Sí agrega un adorno: que la mejora *"facilitó la disponibilidad oportuna de información para la toma de decisiones"*.
+- **La nota y los datos exactos se complementan.** Gemma no escribió ninguna cifra, como en 19 de sus 20 notas de la evaluación; las cifras están justo debajo, puestas por las reglas (D-31). La nota sí presenta los requisitos de la oferta como *"tus habilidades"*, el defecto del prompt descrito en 8.6.
+- **Tiempo total:** 35 s la primera vez, 22.5 s sin contar la carga del modelo. Gemini tardó 15.1 s: dentro de lo medido en la evaluación A (entre 7 y 18 s), pero casi el doble de su mediana (8.0 s).
+
+<details>
+<summary>El formulario y las métricas de esta prueba</summary>
+
+![El formulario lleno con el ejemplo 1 y, en la barra lateral, la sección Demostración con los botones para cargar y vaciar el formulario](docs/img/app_formulario_demo.png)
+
+![Panel de métricas: extracción 15.0 s con 12.6 s de carga, nota 4.99 s a 42.6 tokens por segundo, carta de Gemini 15.08 s con 424 tokens de entrada y 296 de salida](docs/img/app_nube_ok_metricas.png)
+
+</details>
+
 ### Un caso real: la nube no respondió
 
-Ocurrió en una prueba normal de la app, con internet y con la clave configurada. Nadie lo provocó.
+Ocurrió en otra prueba, con internet y con la clave configurada. Nadie lo provocó. (Estas capturas son de la versión anterior de la app, sin el bloque de datos exactos.)
 
 ![La app después de generar: la carta y la nota aparecen firmadas por gemma4:e4b, y debajo un aviso amarillo dice que la nube falló con un error 504 y que se usó el modelo local](docs/img/app_nube_falla_carta.png)
 
@@ -141,7 +171,7 @@ Minutos después se repitió el mismo formulario con el interruptor *"Usar la nu
 - **El texto es idéntico en las dos pruebas.** Confirma que la carta de la primera la escribió Gemma y no la nube. Y muestra una propiedad del modelo local tal como está configurado (temperatura 0.2 y semilla fija): con los mismos datos, devuelve lo mismo.
 - **La diferencia de 33 s no es "nube contra local".** Son 11 s de cargar el modelo la primera vez y unos 20 s esperando a una nube que no respondió. Con el modelo ya cargado, todo en local tarda 13 s.
 - **El primer token bajó de 1.5 s a 0.3 s** porque el prompt era idéntico y Ollama lo tenía en caché: el mismo efecto que se detectó en la evaluación (D-30).
-- **Falta la tercera columna:** la misma prueba con Gemini respondiendo. Para compararlos con rigor está la evaluación A (sección 8).
+- **La prueba con Gemini respondiendo** es la del inicio de esta sección, con otro formulario: no se pueden comparar fila por fila. Para compararlos con rigor está la evaluación A (sección 8).
 
 **La misma prueba con Qwen**
 
@@ -344,7 +374,7 @@ Hay dos evaluaciones, y responden preguntas distintas:
 - **Mismos prompts** (`splitbrain/prompts.py`) y **misma temperatura** (0.2). A Gemini se le envía el mismo payload sanitizado que usa la app.
 - **Un modelo a la vez**, con una llamada de calentamiento que no se cuenta. El arranque se reporta aparte.
 - **Razonamiento apagado** (`think: false`) en Gemma y Qwen.
-- **Equipo:** laptop con AMD Ryzen 7 4800H, 16 GB de RAM, Ollama 0.35.1. Tarjeta gráfica: ⟦completar el modelo⟧; Ollama reporta ambos modelos cargados al 100 % en la GPU. Las latencias locales dependen de este equipo; las de Gemini, de la red.
+- **Equipo:** laptop con AMD Ryzen 7 4800H, 16 GB de RAM, Ollama 0.35.1. No se registró el modelo de la tarjeta gráfica; Ollama reporta ambos modelos cargados al 100 % en la GPU. Las latencias locales dependen de este equipo; las de Gemini, de la red.
 
 **Qué se mide**
 
@@ -779,8 +809,8 @@ carta-split-brain/
 │   └── formularios.json    # cinco formularios ficticios para demostraciones
 ├── tests/                  # pytest (83 pruebas, incluida una que busca claves filtradas)
 ├── docs/
-│   ├── decisiones.md       # registro de decisiones (D-01 a D-33)
-│   ├── articulo.md         # borrador del artículo
+│   ├── decisiones.md       # registro de decisiones (D-01 a D-34)
+│   ├── articulo.md         # el artículo
 │   ├── pasos.md            # guía para reproducir el proyecto
 │   ├── demo.md             # guion para demostraciones en vivo
 │   ├── guia_calificacion.md # criterios para calificar las notas a ciegas

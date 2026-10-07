@@ -44,7 +44,7 @@ No presiones el botón **Deploy** de arriba a la derecha: publicaría la app en 
 
 - **Fijo, siempre igual:** los datos exactos (%, clasificación, rango, cuándo mencionarla) y los reemplazos del panel de lo enviado. Los puedes anunciar antes de presionar el botón.
 - **Cambia de una vez a otra:** el texto de la carta y de la nota. No prometas una frase concreta.
-- **Tiempos habituales** en la laptop de pruebas, con el modelo ya cargado: unos 15 segundos con la nube, unos 16 todo en local con Gemma y unos 36 con Qwen.
+- **Tiempos habituales** en la laptop de pruebas, con el modelo ya cargado: entre 15 y 25 segundos con la nube (Gemini tarda entre 7 y 18), unos 16 todo en local con Gemma y unos 36 con Qwen.
 
 ---
 
