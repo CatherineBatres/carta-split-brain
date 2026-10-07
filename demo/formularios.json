@@ -1,0 +1,92 @@
+[
+  {
+    "id": "d1",
+    "titulo": "1 · Caso base",
+    "que_muestra": "El recorrido completo. El nombre, el empleador, el salario, el correo y el teléfono están escritos dentro de la experiencia, y ninguno sale a la nube.",
+    "perfil": {
+      "nombre": "Ana Lucía Pérez",
+      "empleador_actual": "Distribuidora El Quetzal",
+      "moneda": "Q",
+      "salario_actual": 9000,
+      "salario_deseado": 10500,
+      "puesto_actual": "Asistente contable",
+      "puesto_objetivo": "Contadora general",
+      "empresa_objetivo": "Grupo Andino",
+      "resumen_experiencia": "Soy Ana Lucía Pérez. Llevo 4 años en Distribuidora El Quetzal llevando contabilidad de pymes y cierres mensuales; hoy gano Q9,000 al mes. Pueden escribirme a ana.perez@correo.com o al 5555-1234.",
+      "logros": "Reduje el cierre mensual de 10 a 6 días.",
+      "oferta_texto": "Contador(a) general. Requisitos: CPA colegiado, Excel avanzado, manejo de SAT. Presencial en zona 10. Salario Q10,000 - Q12,000."
+    }
+  },
+  {
+    "id": "d2",
+    "titulo": "2 · Muy ambiciosa",
+    "que_muestra": "Las reglas, no el modelo, calculan el % y lo comparan con el rango de la oferta: muy ambiciosa y por encima del rango. Otra moneda (US$).",
+    "perfil": {
+      "nombre": "Sofía Ramírez",
+      "empleador_actual": "Apps del Istmo",
+      "moneda": "US$",
+      "salario_actual": 1800,
+      "salario_deseado": 3200,
+      "puesto_actual": "QA manual",
+      "puesto_objetivo": "QA automation",
+      "empresa_objetivo": "Nearshore Labs",
+      "resumen_experiencia": "3 años de QA manual en apps móviles.",
+      "logros": "Diseñé 400 casos de prueba y bajé los errores en producción.",
+      "oferta_texto": "QA Automation Engineer. Selenium, Cypress, API testing, inglés B2. Remoto. Salario US$2,000 - US$2,800."
+    }
+  },
+  {
+    "id": "d3",
+    "titulo": "3 · Pide menos de lo que gana",
+    "que_muestra": "Una regla detecta el caso raro y lo avisa. La oferta no publica rango.",
+    "perfil": {
+      "nombre": "Roberto Chávez",
+      "empleador_actual": "Manufacturas del Sur",
+      "moneda": "Q",
+      "salario_actual": 15000,
+      "salario_deseado": 13000,
+      "puesto_actual": "Jefe de planta",
+      "puesto_objetivo": "Coordinador de sostenibilidad",
+      "empresa_objetivo": "Fundación Verde",
+      "resumen_experiencia": "12 años en manufactura; quiero pasar al área ambiental.",
+      "logros": "Reduje el consumo de agua de la planta y lideré un equipo de 80 personas.",
+      "oferta_texto": "Coordinador de sostenibilidad. Gestión de proyectos, reportes GRI, trabajo con comunidades. Híbrido."
+    }
+  },
+  {
+    "id": "d4",
+    "titulo": "4 · Requisitos que no tiene",
+    "que_muestra": "Fidelidad: la carta no debe afirmar que domina Salesforce ni inglés. Sirve para mostrar por qué hay que leer lo que genera un modelo.",
+    "perfil": {
+      "nombre": "José Ángel Barrios",
+      "empleador_actual": "Distribuidora Central",
+      "moneda": "Q",
+      "salario_actual": 11000,
+      "salario_deseado": 13000,
+      "puesto_actual": "Ejecutivo de ventas",
+      "puesto_objetivo": "Key account manager",
+      "empresa_objetivo": "SaaS Latam",
+      "resumen_experiencia": "5 años como ejecutivo de ventas atendiendo cuentas corporativas.",
+      "logros": "Cerré 12 contratos nuevos en 2024.",
+      "oferta_texto": "KAM B2B. CRM (Salesforce), negociación, inglés. Remoto."
+    }
+  },
+  {
+    "id": "d5",
+    "titulo": "5 · Oferta en inglés",
+    "que_muestra": "El modelo local entiende una oferta en otro idioma y extrae los requisitos; las reglas leen el rango aunque esté en inglés.",
+    "perfil": {
+      "nombre": "Andrea Fuentes",
+      "empleador_actual": "Contact Center Maya",
+      "moneda": "Q",
+      "salario_actual": 8000,
+      "salario_deseado": 9500,
+      "puesto_actual": "Agente bilingüe",
+      "puesto_objetivo": "Customer success specialist",
+      "empresa_objetivo": "Helpdesk Global",
+      "resumen_experiencia": "4 años atendiendo clientes en inglés por chat y teléfono.",
+      "logros": "Mantuve una satisfacción de clientes de 96 % durante dos años.",
+      "oferta_texto": "Customer Success Specialist. Fluent English, Zendesk, SaaS experience. Remote. Salary Q9,000 - Q10,500."
+    }
+  }
+]

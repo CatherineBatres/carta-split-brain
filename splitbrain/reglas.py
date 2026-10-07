@@ -236,6 +236,59 @@ def nota_por_reglas(h: Hechos) -> str:
     return "\n".join(lineas)
 
 
+def datos_exactos(h: Hechos) -> str:
+    """Los hechos calculados, sin título: la app los muestra junto a la nota del modelo (D-31)."""
+    return "\n".join(nota_por_reglas(h).split("\n")[2:])
+
+
+# D-31: la nota es un consejo PARA la persona ("tu expectativa"). Si dice "mi salario actual"
+# o "mi expectativa", el modelo la escribió como un mensaje de la persona a la empresa.
+PRIMERA_PERSONA_RE = re.compile(r"\bmis? (salario|sueldo|expectativa|compensaci[oó]n)\b", re.I)
+
+
+def habla_en_primera_persona(texto: str) -> bool:
+    """ALERTA, no prueba: ¿la nota habla como si la persona le escribiera a la empresa?
+
+    Puede marcar una nota correcta que incluye, entre comillas, una frase sugerida para
+    decirle a RR. HH. Por eso solo avisa; no descarta la nota.
+    """
+    return PRIMERA_PERSONA_RE.search(texto) is not None
+
+
+def cifras_ajenas(texto: str, h: Hechos) -> list[str]:
+    """Montos o porcentajes del texto que NO vienen de los hechos calculados."""
+    permitidos = h.numeros_permitidos()
+    malas = []
+    for m in extraer_montos(texto):
+        # D-30: solo cuenta lo que se presenta como dinero (con moneda o con k/mil).
+        # Antes, "ISO 14001" contaba como cifra inventada.
+        if (m.con_moneda or m.con_sufijo) and not any(
+                es_mismo_monto(m.valor, p, 0.01) for p in permitidos):
+            malas.append(m.texto.strip())
+    if h.incremento_pct is not None:
+        for p in re.findall(r"(\d+(?:[.,]\d+)?)\s?%", texto):
+            if abs(float(p.replace(",", ".")) - abs(h.incremento_pct)) > 1:
+                malas.append(p + "%")
+    return malas
+
+
+def problemas_en_nota(nota: str, h: Hechos) -> list[str]:
+    """Revisión determinista de la nota que escribió el modelo local (D-31).
+
+    Sale de la evaluación B: un modelo escribió "Q1,100" donde el salario era Q11,000, y
+    13 de 20 notas de otro estaban redactadas como un mensaje para la empresa.
+    """
+    problemas = []
+    ajenas = cifras_ajenas(nota, h)
+    if ajenas:
+        problemas.append("La nota menciona cifras que no vienen de tus datos ("
+                         + ", ".join(ajenas) + "). Guíate por los datos exactos.")
+    if habla_en_primera_persona(nota):
+        problemas.append("La nota parece escrita como un mensaje para la empresa. Es solo "
+                         "para ti: no la copies ni la envíes.")
+    return problemas
+
+
 def problemas_en_carta(carta: str, perfil: Perfil) -> list[str]:
     """Revisión determinista de la carta final (venga de la nube o de local)."""
     problemas = []

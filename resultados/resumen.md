@@ -46,12 +46,24 @@
 }
 ```
 
+## Alertas de la nota (no entran en la calidad)
+
+| modelo     |   notas |   hablan_en_primera_persona |   citan_alguna_cifra |   con_cifra_que_no_venia |
+|:-----------|--------:|----------------------------:|---------------------:|-------------------------:|
+| gemma4:e4b |      20 |                           5 |                    1 |                        0 |
+| qwen3.5:4b |      20 |                          13 |                   20 |                        3 |
+
+*Hablan en primera persona*: dicen "mi salario" o "mi expectativa", como si la persona le escribiera a la empresa. La nota debería aconsejar a la persona ("tu expectativa"). Es una alerta para leer, no una prueba.
+
 ## Evaluación humana ciega de las notas (1–5)
 
 | modelo     |   n | claridad_1a5   |   utilidad_1a5 |   inventa_n |   inventa_de |
 |:-----------|----:|:---------------|---------------:|------------:|-------------:|
 | qwen3.5:4b |  10 |                |            4.4 |          10 |           10 |
 | gemma4:e4b |  10 |                |            3.8 |          10 |           10 |
+
+- ⚠️ `claridad_1a5` está vacía: no se puede reportar.
+- ⚠️ `inventa_datos_si_no` tiene el mismo valor ("sí") en las 20 notas: no distingue entre modelos.
 
 ## Gráficas
 

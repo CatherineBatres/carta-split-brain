@@ -75,6 +75,7 @@ git push
 | Después de instalar una actualización | `Rúbrica: comparar puesto por raíces de palabra (D-28)` |
 | Después de calificar a ciegas | `Evaluación ciega de las 30 cartas (corrida 2)` |
 | Después de la evaluación B | `Evaluación B: Gemma vs Qwen en nota y extracción` |
+| Después de instalar D-31 | `Veredicto final Gemma vs Qwen; la nota muestra los datos exactos de las reglas (D-31)` |
 | Al cerrar | `README y artículo con resultados finales y links` |
 
 **Si algo sale mal**
@@ -136,11 +137,11 @@ python -m bench.comparar_tres --reevaluar --carpeta tres_modelos_v2
 
 ```bash
 python -m bench.correr_bench --simulado                          # 1 minuto: confirma que todo corre
-python -m bench.correr_bench --modelos gemma4:e4b --reiniciar    # unos 7 minutos
+python -m bench.correr_bench --modelos gemma4:e4b --reiniciar    # unos 6 minutos
 ```
 Espera 5 minutos y luego:
 ```bash
-python -m bench.correr_bench --modelos qwen3.5:4b    # unos 10 minutos
+python -m bench.correr_bench --modelos qwen3.5:4b    # unos 8 minutos
 ```
 
 **Si la computadora se apaga o cierras la ventana:** no se pierde nada. Enciéndela, espera a que enfríe y corre el mismo comando: continúa donde se quedó. Para ver cuánto falta:
@@ -161,10 +162,26 @@ Luego:
    python -m bench.analizar
    ```
    Escribe `resultados\resumen.md` y las gráficas en `docs\img\` (calidad, latencia, memoria y ritmo). Mira la tabla "Ritmo": si muchas respuestas salieron "a ritmo lento", el equipo se calentó y conviene repetir con más descansos.
-3. Con eso se escribe el veredicto final: cuál gana, por qué y **en qué pierde el ganador**.
+3. **Lee las notas antes de concluir.** Están en `resultados\crudo\progreso.jsonl` y en la hoja ciega. La tabla "Alertas de la nota" de `resumen.md` dice cuántas hablan en primera persona ("mi salario…") y cuántas traen una cifra que no venía en los datos: esas son las primeras que hay que leer.
+4. Con eso se escribe el veredicto final: cuál gana, por qué y **en qué pierde el ganador** (README, sección 8.6 y conclusión 1).
+
+Si `resumen.md` muestra un aviso ⚠️ debajo de la evaluación humana, una columna de la hoja quedó vacía o con el mismo valor en todas las filas: esa columna no sirve para comparar modelos.
 
 ## Fase 6 · Artículo y demo
-1. Capturas: la app completa, el panel "lo que salió a la nube" y el modo sin conexión.
+
+Para las demostraciones en vivo hay cinco formularios ficticios que se cargan de un clic (barra lateral, sección 🎬 Demostración) y un guion con qué mostrar y qué decir: [`demo.md`](demo.md).
+
+1. Capturas de la app (se abre con `streamlit run app.py` y luego http://127.0.0.1:8501). Usa **solo datos ficticios**: carga el formulario 1 de la sección 🎬 Demostración:
+
+   | # | Qué debe verse | Cómo llegar |
+   |---|---|---|
+   | 1 | La app completa: carta a la izquierda, nota privada a la derecha | Llena el formulario y presiona **Generar**, con la nube encendida |
+   | 2 | La nota con el bloque **"Datos exactos (calculados por reglas)"** | La misma pantalla, acercando la columna derecha |
+   | 3 | El panel **"Exactamente lo que salió a la nube"** abierto | Clic en ese panel, debajo de la carta |
+   | 4 | El modo local: la carta dice 🖥️ y el panel dice "No se envió (modo local)" | Apaga el interruptor *"Usar la nube para la carta"* y genera de nuevo. Con el wifi apagado aparece además un aviso amarillo |
+   | 5 | (Opcional) La barra lateral con Ollama ✅ e Internet ✅ | Sin cambiar nada |
+
+   Antes de tomar cada captura revisa que no se vea tu clave de Gemini, tu correo ni otras ventanas. No presiones el botón **Deploy** de arriba a la derecha.
 2. Llena los ⟦PENDIENTE⟧ de `docs\articulo.md` y publícalo en Medium o Substack.
 3. Graba un video corto (con conexión → sin conexión) y súbelo.
 4. Pega los dos links al inicio del `README.md`, y haz el último commit y push.

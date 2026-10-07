@@ -29,6 +29,14 @@ class Perfil:
     oferta_texto: str = ""
     tono: str = "profesional y cercano"
 
+    def __post_init__(self) -> None:
+        # D-33: se quitan los espacios sobrantes de cada texto. Un "Universidad X " con un
+        # espacio al final terminaba en la carta como "Universidad X , he trabajado…".
+        for f in fields(self):
+            valor = getattr(self, f.name)
+            if isinstance(valor, str):
+                setattr(self, f.name, valor.strip())
+
     @classmethod
     def nombres_de_campos(cls) -> set[str]:
         return {f.name for f in fields(cls)}

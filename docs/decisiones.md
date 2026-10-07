@@ -321,13 +321,13 @@ Corrida larga de `qwen3.5:4b`: 87 respuestas seguidas, sin pausas (`resultados/c
 | Tramo | Respuestas | Duración | Tokens/s | Carta |
 |---|---|---|---|---|
 | Normal | 1–55 | 10.7 min | 20.0 | 20 s |
-| Lento | 56–75 | 10.6 min | 6.9 | 59 s |
-| Recuperado | 76–87 | 1.6 min | 20.5 | 20 s |
+| Lento | 56–75 | 10.6 min | 6.9 | 58 s |
+| Recuperado | 76–87 | 1.6 min | 20.5 | 16–20 s |
 
 - **Interpretación:** mismo modelo, mismo prompt, misma memoria en GPU; cambia la velocidad. Es el patrón de un equipo que limita su rendimiento por temperatura. No se midió la temperatura, así que queda como causa probable.
-- **Corrige a D-27:** la hipótesis de que en la corrida 1b los dos modelos no cabían juntos en la GPU pierde fuerza. Los 58 s de Qwen coinciden con este modo lento (59 s), y la caída empezó en la última carta de Gemma (30 s en vez de 10).
+- **Corrige a D-27:** la hipótesis de que en la corrida 1b los dos modelos no cabían juntos en la GPU pierde fuerza. Los 58 s de Qwen coinciden con este modo lento (58 s de mediana), y la caída empezó en la última carta de Gemma (30 s en vez de 10).
 - **Corrige a D-28 y D-29:** se retira la afirmación de que Gemma "aguanta mejor" una máquina ocupada. Los dos modelos se frenan en la misma proporción; a Qwen le tocó correr durante la caída.
-- **Consecuencia para medir:** las pausas de D-29 no son solo para proteger el equipo: sin ellas, un tercio de las mediciones puede salir tres veces más lento por una causa ajena al modelo. `bench/analizar.py` ahora marca las respuestas "a ritmo lento" y dibuja la velocidad en orden de ejecución (`ritmo.png`).
+- **Consecuencia para medir:** las pausas de D-29 no son solo para proteger el equipo: sin ellas, casi una de cada cuatro mediciones puede salir tres veces más lenta por una causa ajena al modelo. `bench/analizar.py` ahora marca las respuestas "a ritmo lento" y dibuja la velocidad en orden de ejecución (`ritmo.png`).
 
 ### 3. Cuatro correcciones de medición que salieron de esa corrida
 1. **Las repeticiones eran idénticas.** Con semilla fija (42), las tres repeticiones de cada texto salían iguales palabra por palabra: servían para medir latencia, no calidad. **Decisión:** semilla `42 + repetición`. Cada repetición es una muestra distinta y sigue siendo reproducible. *Por qué no quitar la semilla:* se perdería la reproducibilidad.
@@ -343,3 +343,145 @@ Corrida larga de `qwen3.5:4b`: 87 respuestas seguidas, sin pausas (`resultados/c
 - **Las 7 de la lectura estricta están contenidas en las 16 de la ciega.** Las 9 adicionales (3 por modelo) son afirmaciones más suaves.
 - **La nota "lista para enviar" no es independiente de "inventa":** solo se usaron 3 y 5, y casi siempre 3 cuando la carta inventa (una excepción). El 4.40 / 4.20 / 3.40 es, en la práctica, otra forma de escribir 3, 5 y 8 cartas marcadas.
 - **Consecuencia:** el empate de reglas de D-29 (nota contra fidelidad) no era tal: son la misma señal. La decisión no cambia, y su base queda más clara: Gemini tuvo 2 cartas menos marcadas que Gemma, de 10.
+
+## D-31 · Evaluación B: veredicto final entre Gemma y Qwen, y la nota deja de depender del modelo para las cifras
+
+### 1. Resultados (76 respuestas, 38 por modelo, sin ninguna a ritmo lento)
+
+| Tarea | Medida | Gemma 4 E4B | Qwen 3.5 4B |
+|---|---|---|---|
+| Extracción | Calidad (rúbrica) | 1.00 | 0.98 |
+| | Latencia mediana | 1.7 s | 3.8 s |
+| Nota | Calidad (rúbrica) | 0.79 | 0.89 |
+| | Utilidad a ciegas (1–5) | 3.8 | 4.4 |
+| | Latencia mediana | 5.0 s | 9.6 s |
+| Las dos | Tokens/s | 43.9 | 20.5 |
+| | Memoria | 3,096 MB | 2,988 MB |
+| | Carga en frío | 11.6 s | 9.0 s |
+
+### 2. Antes de concluir se leyeron las 40 notas (lección de D-23 y D-28)
+- **Contexto:** Gemma sacó 0 de 20 en `cita_porcentaje`. Las dos veces anteriores que un criterio dio un resultado así de extremo, la regla estaba mal.
+- **Qué se encontró:** esta vez la regla estaba bien. Gemma no cita el % en ninguna nota, y 19 de 20 no usan ninguna cifra del caso.
+  - *Salvedad:* en el perfil c10 el cambio es 0 %, y el criterio solo se cumple escribiendo "0 %". Fallan las 4 notas de ese perfil, 2 por modelo. Sin él: Gemma 0 de 18, Qwen 14 de 18. No cambia el resultado.
+- **Lo que no medía nadie:** 13 de 20 notas de Qwen (y 5 de Gemma) no aconsejan a la persona: son un mensaje de la persona para la empresa. En 12 de las de Qwen aparece el salario actual. La instrucción decía "hablas en segunda persona".
+- **Cifras alteradas por Qwen (3 de 20 notas):** "Q1,100" por Q11,000; un ancla de "Q14,000" que nadie dio; un logro inventado con "40 %". Además leyó el requisito "GRI" como "griego" en las dos repeticiones.
+- **Extracción:** de los dos perfiles donde Qwen perdió puntos, uno es un falso negativo de la rúbrica ("Fluent English" → "Inglés fluido") y el otro un error real (tomó "CRM (Salesforce)" como el puesto).
+  - ❌ *Por qué no se corrigió ese criterio:* cambia la calidad de Qwen de 0.98 a 0.99 y no altera ninguna conclusión. Queda documentado.
+
+### 3. Dos alertas nuevas en la rúbrica de la nota (no cambian la calidad)
+- **Decisión:** agregar `primera_persona` (la nota dice "mi salario" o "mi expectativa") y `cita_alguna_cifra`. Se calculan después de la calidad; la nota de 0.79 y 0.89 es la misma que antes.
+- **Por qué:** una afirmación como "13 de 20" debe poder repetirse con un comando (`--armar`), no depender solo de una lectura.
+- **Qué tan buena es la alerta:** coincide con la lectura en 38 de 40 notas. Falla con una nota correcta que incluye, entre comillas, una frase para decirle a RR. HH., y no ve una nota que mezcla las dos voces sin decir "mi salario".
+- **Por qué no meterla en la calidad:**
+  - ❌ Cambiaría el resultado después de verlo, con un criterio elegido sabiendo a quién perjudica.
+  - ❌ Tiene falsos positivos conocidos. Como alerta sirve; como nota, no.
+
+### 4. La evaluación ciega de las notas: qué se usa y qué no
+- **Se usa:** utilidad (Qwen 4.4, Gemma 3.8; 10 notas por modelo).
+- **No se usa:** `claridad_1a5` quedó vacía; `inventa_datos_si_no` quedó en "Sí" en las 20 notas, incluidas varias cuyo comentario dice que los datos son correctos. No distingue entre modelos.
+- **Hueco de la guía de calificación:** preguntaba por realismo, momento y argumento; no por el destinatario. Por eso 4 de las 6 notas de Qwen escritas para la empresa recibieron 5.
+- **Decisión:** `bench/analizar.py` ahora avisa cuando una columna de la hoja está vacía o tiene un solo valor.
+- **Por qué no pedir que se califique de nuevo:** una segunda pasada, ya conociendo los resultados, dejaría de ser ciega.
+
+### 5. Veredicto: Gemma 4 E4B es el modelo local de la app
+- **Por qué:** gana la carta (4.20 contra 3.40 a ciegas; inventa menos), empata la extracción y es el doble de rápido en las tres tareas (más rápido en las 68 comparaciones respuesta a respuesta). Sigue mejor las instrucciones.
+- **En qué pierde:** en la nota no usa los datos (rúbrica 0.79 contra 0.89; utilidad 3.8 contra 4.4); 108 MB más de memoria; carga más lenta en 3 de 4 mediciones (ver la corrección en D-33: deja de contarse).
+- **Por qué no Qwen para la nota, si ganó lo medido:**
+  - ❌ Su defecto es el peor posible para esta app: redacta el salario actual en un texto dirigido a la empresa (12 de 20 notas).
+  - ❌ Alteró cifras en 3 de 20 notas. Una cifra equivocada en una negociación es peor que una cifra ausente.
+  - ❌ Tarda el doble.
+- **Por qué no un modelo para cada tarea (Qwen para la nota, Gemma para lo demás):**
+  - ❌ Dos modelos de 3 GB cargados a la vez en un equipo que ya mostró límites de temperatura, o 9–12 s de carga en cada cambio.
+  - ❌ La ventaja de Qwen (usar las cifras) se consigue sin modelo: ver el punto 6.
+- **Honestidad:** las dos señales medidas favorecen a Qwen en la nota y la decisión se apoya en una lectura no ciega. Quien dé más peso a lo medido puede elegir Qwen en la app (es un selector).
+
+### 6. Cambio en la app: las cifras de la nota las ponen las reglas
+- **Contexto:** la app mostraba solo la nota del modelo. Con Gemma, la persona no veía el % exacto que las reglas ya habían calculado. Con Qwen podía ver un salario equivocado.
+- **Decisión:**
+  1. Debajo de la nota del modelo se muestran los **datos exactos** (`reglas.datos_exactos`): salarios, % de cambio, rango, posición y cuándo mencionarla.
+  2. `reglas.problemas_en_nota` revisa la nota y **avisa** si trae una cifra que no viene de los datos o si está en primera persona.
+- **Por qué:** es la misma idea que el guardián de la nube, aplicada hacia adentro: lo que escribe un modelo se revisa con algo que no comete ese error. Y cubre el punto débil de Gemma sin cambiar de modelo.
+- **Por qué avisar y no reemplazar la nota por la de reglas:**
+  - ❌ La alerta de primera persona tiene falsos positivos; descartar notas correctas sería peor que avisar.
+  - ❌ La persona ya tiene los datos exactos al lado: puede decidir con ambos.
+- **Por qué no quitar el modelo de la nota y dejar solo las reglas:**
+  - ❌ La nota del modelo aporta el argumento y el tono; la de reglas es una lista de hechos. La evaluación ciega valoró esa redacción (3.8 y 4.4 de 5).
+  - ✅ Sigue siendo el respaldo cuando Ollama no está.
+- **Pruebas:** `tests/test_nota.py` (9), con frases reales de la evaluación. Total: 76.
+- **No cambia la evaluación:** el modelo recibe exactamente lo mismo que antes.
+
+### 7. Tres mejoras al prompt de la nota: propuestas, no aplicadas
+1. Decir quién la lee ("es para la persona; no es un mensaje para la empresa").
+2. Quitar de los hechos el recordatorio sobre la carta: Qwen lo aplicó a la propia nota ("No incluyas cifras en esta nota").
+3. Pasar los logros de la persona. Hoy recibe los requisitos de la oferta y no los logros, así que arma el argumento presentando los requisitos como habilidades. La nota es local: no hay razón de privacidad para ocultarle los logros.
+- **Por qué no se aplican ahora:** cambian lo que recibe el modelo, así que los resultados publicados dejarían de describir la app. Aplicarlas exige repetir la evaluación B (unos 15 minutos de carga en un equipo que ya se apagó una vez).
+- **Lo que sí se reconoce:** estos defectos son del prompt, no de los modelos. Afectan a los dos por igual, por lo que la comparación es justa; la calidad absoluta de las notas podría ser mayor.
+
+### 8. El calor, cerrado con datos
+- Sin pausas: 20 de 87 respuestas a menos del 60 % de la velocidad normal (19 de ellas a un tercio), y un apagado en otra corrida.
+- Con pausas de 3 s, descanso de 60 s cada 15 respuestas y un modelo por vez: 0 de 76 respuestas lentas. Gemma entre 40.2 y 45.3 tokens/s; Qwen entre 20.4 y 21.1.
+- **Decisión:** las pausas quedan como valor por defecto del script. No se midió la temperatura; la causa térmica sigue siendo la explicación más probable, no un hecho medido.
+- **Corrección menor:** la gráfica de calidad mostraba la mediana (0.80 y 0.90) y la tabla el promedio (0.79 y 0.89). Ahora las dos usan el promedio.
+
+## D-32 · Formularios de ejemplo para demostraciones
+
+- **Contexto:** en una demostración en vivo hay que llenar 11 campos. Escribirlos frente al público toma tiempo y es fácil equivocarse; y usar datos reales en pantalla contradice lo que la app defiende.
+- **Decisión:** cinco formularios ficticios en `demo/formularios.json` y, en la barra lateral, una sección **🎬 Demostración** que llena el formulario de un clic. El guion está en `docs/demo.md`.
+- **Qué cubre cada uno:** el recorrido completo con datos sensibles escondidos en el texto; una expectativa muy ambiciosa por encima del rango; pedir menos de lo que se gana; una oferta que pide lo que la persona no dijo tener; una oferta en inglés.
+- **Por qué:**
+  - Lo que se enseña en una demo debe poder repetirse: los datos exactos y los reemplazos del sanitizador son los mismos cada vez, y el guion los anuncia.
+  - Los ejemplos son los mismos casos difíciles de la evaluación, así que la demo muestra lo que se midió.
+- **Por qué no:**
+  - ❌ *Un documento con los datos para copiar y pegar, sin tocar la app:* son 11 copias por formulario frente al público. Se dejó como respaldo (las tablas de `docs/demo.md`).
+  - ❌ *Dejar el formulario precargado al abrir la app:* quien la use de verdad tendría que borrar datos ajenos, y una captura de pantalla podría confundir un ejemplo con una persona real.
+  - ❌ *Reusar `bench/casos.json` directamente:* ese archivo es de la evaluación; cambiarlo para una demo cambiaría lo medido.
+  - ❌ *Un formulario que haga saltar al guardián:* no existe una entrada escrita en el formulario que lo logre, porque el sanitizador limpia antes cualquier cifra. El guardián es la segunda barrera y se demuestra con `pytest`, no en pantalla.
+- **Si falta el archivo:** la app funciona igual y simplemente no muestra la sección.
+- **Pruebas:** `tests/test_demo.py` (4): cada formulario llena todos los campos, ninguno deja salir nombre, empleador ni salarios, el primero dispara los cinco tipos de reemplazo, y entre todos cubren los casos del guion. Total: 80.
+
+## D-33 · La nube falló en uso real: el respaldo funcionó y el panel de transparencia mintió
+
+### 1. Qué pasó
+- En una prueba normal de la app (internet ✅, clave ✅), Gemini no terminó dentro del límite de 20 s (`GEMINI_TIMEOUT_MS`) y respondió `504 DEADLINE_EXCEEDED`.
+- La app pasó al modelo local, como estaba diseñado (D-05): la carta la escribió `gemma4:e4b` en 9.9 s, con un aviso en pantalla.
+- Tiempos: nota 16.3 s (11.2 s de carga del modelo + 5.1 s), unos 20 s de espera a la nube y 9.9 s de carta. Unos 46 s en total, contra unos 15 cuando la nube responde.
+- **Coincide con lo medido:** 5.1 s para la nota (5.0 en la evaluación B), 9.9 s para la carta (9.5 en la A), 41.2 tokens/s (41.9).
+
+### 2. Error encontrado: el panel decía "No se envió" y sí se había enviado
+- **Contexto:** `envio_nube` se ponía en verdadero solo cuando la nube devolvía la carta. Con un 504, el panel mostraba *"No se envió (modo local), pero esto habría salido:"*.
+- **Por qué está mal:** el 504 lo responde el servidor, así que la petición llegó. Lo que salió estaba sanitizado, pero el panel existe para decir con exactitud qué salió del equipo.
+- **Decisión:** nuevo campo `envio_intentado`, verdadero desde el momento en que se llama a la nube. El panel ahora dice *"Se envió ⚠️, pero la nube no devolvió la carta (la escribió el modelo local). Esto es lo que salió:"*.
+- **Por qué no dejarlo como estaba, si los datos iban limpios:**
+  - ❌ La garantía de la app no es solo "lo sensible no sale": es "puedes ver exactamente qué salió". Una pantalla que afirma lo contrario de lo ocurrido rompe la segunda mitad.
+- **Por qué "se intentó" y no "se envió con certeza":**
+  - Si el fallo es de red antes de conectar, puede que nada haya salido. Ante la duda, la app dice que salió: es el error del lado seguro para quien usa la app.
+- **Lección:** había pruebas para lo que se envía y ninguna para lo que la app *dice* haber enviado. Ahora hay dos (`tests/test_offline.py`).
+
+### 3. Error menor: espacios sobrantes
+- Un empleador escrito con un espacio al final aparecía en la carta como *"Universidad X , he desarrollado…"*, porque el nombre se vuelve a poner tal cual se escribió.
+- **Decisión:** `Perfil` quita los espacios al inicio y al final de cada texto.
+- ❌ *Por qué no corregirlo en la carta ya escrita:* habría que adivinar qué espacios sobran; es más simple no dejarlos entrar.
+
+### 4. Lo que la prueba confirmó de D-31
+- La nota de Gemma abrió con *"Aquí tienes una propuesta para tu nota privada"*, habló en primera persona a la empresa y no citó ninguna cifra: los tres rasgos de la sección 8.6, fuera del benchmark.
+
+### 5. La misma prueba con la nube apagada
+- Mismo formulario, interruptor de la nube apagado: nota 4.6 s, carta 8.2 s (42.9 tokens/s), unos 13 s en total.
+- **Texto idéntico al de la prueba anterior** (161 y 318 tokens en las dos). Confirma que la carta de la primera prueba era de Gemma, y que con temperatura 0.2 y semilla fija el modelo local es reproducible.
+- **Cómo leer la diferencia (46 s contra 13 s):** 11 s son carga del modelo y unos 20 s son la espera a la nube. No es una comparación de velocidad entre nube y local; esa está en la evaluación A.
+- Primer token de la carta: 1.5 s en la primera prueba y 0.3 s en la segunda, por la caché de prompt de Ollama (mismo efecto de D-30).
+
+### 6. La misma prueba con Qwen
+- Nota 34.7 s (24.2 s de carga del modelo + 10.5 s), carta 22.4 s a 20.2 tokens/s, 2,988.1 MB.
+- **La nota:** *"Estimado/a responsable de RR.HH.… Mi salario actual es de Q5,000 y busco una revisión al 10%…"*. Cifras correctas, dirigida a la empresa, con el salario actual: el patrón de 13 de 20 notas de la evaluación B.
+- **La carta** agrega lo que la persona no dijo: "graduada recientemente", "clases reconocidas por su claridad pedagógica", "lidero proyectos de investigación colaborativa". La de Gemma, menos: "mi formación en física", "gestión de equipos especializados".
+- **Corrige a D-31 sobre el arranque:** se decía que Gemma cargaba más lento en 3 de 4 mediciones. Con esta, son 3 de 5, y aquí fue Qwen el lento (24.2 s contra 11.2 s), porque antes hubo que sacar a Gemma de la memoria. **Decisión:** el arranque deja de contarse como desventaja de Gemma; se reporta como "sin ventaja clara, entre 9 y 24 s según el estado del equipo".
+- **Alcance:** es un ejemplo, no una medición. Se publica porque coincide con las evaluaciones A y B, no como evidencia nueva.
+
+### 7. Qué no se cambió
+- **El límite de 20 s.** En la evaluación A Gemini tardó entre 7 y 18 s; un límite más alto alarga la espera cuando la nube está caída. Se puede ajustar con `GEMINI_TIMEOUT_MS`.
+- **No se reintenta la llamada a la nube.** ❌ Un reintento duplica la espera y vuelve a enviar los datos; el modelo local está a 10 s.
+- **Capturas:** se publican las de la carta, el panel y las métricas. No se publica la del formulario lleno, porque junta un nombre de persona con una institución real y un salario.
+
+Total de pruebas: 83.
+

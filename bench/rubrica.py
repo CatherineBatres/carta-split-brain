@@ -10,7 +10,8 @@ import json
 import re
 import unicodedata
 
-from splitbrain.reglas import Hechos, es_mismo_monto, extraer_montos
+from splitbrain.reglas import (Hechos, cifras_ajenas, es_mismo_monto, extraer_montos,
+                               habla_en_primera_persona)
 
 STOP_ES = {"de", "la", "que", "el", "en", "y", "a", "los", "se", "del", "las", "un", "por",
            "con", "no", "una", "su", "para", "es", "al", "lo", "como", "más", "tu", "te"}
@@ -45,20 +46,11 @@ def es_espanol(texto: str, umbral: float = 0.12) -> bool:
 
 
 def cifras_inventadas(texto: str, h: Hechos) -> list[str]:
-    """Montos o porcentajes en la nota que NO vienen de los hechos calculados."""
-    permitidos = h.numeros_permitidos()
-    malas = []
-    for m in extraer_montos(texto):
-        # D-30: solo cuenta lo que se presenta como dinero (con moneda o con k/mil).
-        # Antes, "ISO 14001" contaba como cifra inventada.
-        if (m.con_moneda or m.con_sufijo) and not any(
-                es_mismo_monto(m.valor, p, 0.01) for p in permitidos):
-            malas.append(m.texto.strip())
-    if h.incremento_pct is not None:
-        for p in re.findall(r"(\d+(?:[.,]\d+)?)\s?%", texto):
-            if abs(float(p.replace(",", ".")) - abs(h.incremento_pct)) > 1:
-                malas.append(p + "%")
-    return malas
+    """Montos o porcentajes en la nota que NO vienen de los hechos calculados.
+
+    D-31: la regla vive en `splitbrain/reglas.py` porque la app también la usa para avisar.
+    """
+    return cifras_ajenas(texto, h)
 
 
 def cita_el_porcentaje(texto: str, pct: float) -> bool:
@@ -71,6 +63,14 @@ def cita_el_porcentaje(texto: str, pct: float) -> bool:
     enteros = {int(a), round(a)}
     patron = "|".join(str(e) for e in sorted(enteros))
     return re.search(rf"(?<![\d.,])(?:{patron})(?:[.,]\d)?\s?%", texto) is not None
+
+
+def cita_alguna_cifra(texto: str, h: Hechos) -> bool:
+    """¿La nota usa al menos una cifra de los hechos (un monto o el % de cambio)?"""
+    permitidos = h.numeros_permitidos()
+    if any(es_mismo_monto(m.valor, p, 0.01) for m in extraer_montos(texto) for p in permitidos):
+        return True
+    return h.incremento_pct is not None and cita_el_porcentaje(texto, h.incremento_pct)
 
 
 def evaluar_nota(texto: str, h: Hechos) -> dict:
@@ -88,6 +88,9 @@ def evaluar_nota(texto: str, h: Hechos) -> dict:
     }
     c["calidad"] = round(sum(c[k] for k in ("longitud_ok", "cita_porcentaje",
                          "sin_cifras_inventadas", "dice_cuando", "en_espanol")) / 5, 3)
+    # D-31: informativos. Se agregan DESPUÉS de calcular la calidad para no cambiarla.
+    c["primera_persona"] = int(habla_en_primera_persona(texto))
+    c["cita_alguna_cifra"] = int(cita_alguna_cifra(texto, h))
     return c
 
 

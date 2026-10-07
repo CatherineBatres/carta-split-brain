@@ -34,6 +34,10 @@ class Resultado:
     requisitos: list[str] = field(default_factory=list)
     avisos: list[str] = field(default_factory=list)
     metricas: dict = field(default_factory=dict)
+    datos_exactos: str = ""    # hechos calculados por reglas; se muestran junto a la nota (D-31)
+    # D-33: el envío se INTENTÓ, aunque la nube no haya devuelto la carta. Si la nube
+    # responde con un error (por ejemplo 504), los datos sanitizados ya salieron del equipo.
+    envio_intentado: bool = False
 
 
 _MARCAS_CIEGAS = re.compile(r"\[(MONTO|CORREO|TELÉFONO|DPI)\]")
@@ -96,6 +100,8 @@ def generar(
         g = local.generar(prompt_nota(hechos, requisitos), SISTEMA_NOTA)
         nota, origen_nota = g.texto, "local"
         metricas["nota"] = g.metricas
+        # D-31: el modelo redacta, las reglas revisan. No se descarta la nota: se avisa.
+        avisos.extend(reglas.problemas_en_nota(nota, hechos))
     except OllamaNoDisponible as e:
         nota, origen_nota = reglas.nota_por_reglas(hechos), "reglas"
         avisos.append(f"Ollama no respondió ({str(e)[:80]}); la nota se generó con reglas.")
@@ -108,9 +114,10 @@ def generar(
         avisos.append(f"Envío a la nube bloqueado por el guardián: {e.motivos}")
 
     # 4) Carta: nube -> local -> plantilla.
-    carta, origen_carta, envio = None, None, False
+    carta, origen_carta, envio, intentado = None, None, False, False
     en_linea = usar_nube and payload is not None and nube.configurado() and hay_conexion()
     if en_linea:
+        intentado = True  # desde aquí el payload pudo salir, responda o no la nube
         try:
             carta, metricas["carta"] = nube.carta(payload)
             origen_carta, envio = "nube", True
@@ -139,4 +146,5 @@ def generar(
     avisos.extend(reglas.problemas_en_carta(carta, perfil))
 
     return Resultado(carta, nota, origen_carta, origen_nota, payload, envio, requisitos, avisos,
-                     metricas)
+                     metricas, datos_exactos=reglas.datos_exactos(hechos),
+                     envio_intentado=intentado)

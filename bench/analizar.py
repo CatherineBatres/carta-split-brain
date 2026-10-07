@@ -16,15 +16,18 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 import pandas as pd  # noqa: E402
 
-from bench.hoja import resumir_ciega  # noqa: E402
+from bench.hoja import leer_hoja, resumir_ciega  # noqa: E402
 
 RAIZ = Path(__file__).resolve().parent.parent
 COLORES = ["#2a78d6", "#eb6834"]  # paleta categórica validada (azul, naranja)
 TINTA, TINTA_2, REJILLA = "#1f1f1e", "#5f5e58", "#e6e5df"
 
 
-def _barras(df: pd.DataFrame, columna: str, titulo: str, unidad: str, archivo: Path) -> None:
-    tabla = df.groupby(["tarea", "modelo"])[columna].median().unstack("modelo")
+def _barras(df: pd.DataFrame, columna: str, titulo: str, unidad: str, archivo: Path,
+            resumen: str = "median") -> None:
+    # D-31: la gráfica usa el mismo resumen que la tabla (la calidad es un promedio; antes la
+    # gráfica mostraba la mediana y no coincidía: 0.80 contra 0.79).
+    tabla = df.groupby(["tarea", "modelo"])[columna].agg(resumen).unstack("modelo")
     modelos = list(tabla.columns)
     fig, ax = plt.subplots(figsize=(7, 3.8), dpi=150)
     ancho = 0.8 / len(modelos)
@@ -37,11 +40,14 @@ def _barras(df: pd.DataFrame, columna: str, titulo: str, unidad: str, archivo: P
     ax.set_ylabel(unidad, color=TINTA_2)
     ax.grid(axis="y", color=REJILLA)
     ax.set_axisbelow(True)
+    ax.set_ylim(top=float(tabla.max().max()) * 1.12)  # aire para las etiquetas
     for s in ("top", "right"):
         ax.spines[s].set_visible(False)
-    ax.legend(frameon=False, fontsize=8)
+    # La leyenda va fuera del área de las barras para que no tape las etiquetas.
+    ax.legend(frameon=False, fontsize=8, loc="lower center", bbox_to_anchor=(0.5, -0.32),
+              ncol=len(modelos))
     fig.tight_layout()
-    fig.savefig(archivo)
+    fig.savefig(archivo, bbox_inches="tight")
     plt.close(fig)
 
 
@@ -83,16 +89,33 @@ def grafica_ritmo(df: pd.DataFrame, archivo: Path, titulo: str) -> None:
     plt.close(fig)
 
 
-def _humana(dir_: Path) -> pd.DataFrame | None:
-    """Une la hoja ciega calificada (las NOTAS) con la clave, si ya la llenaste."""
+def _humana(dir_: Path) -> tuple[pd.DataFrame | None, list[str]]:
+    """Une la hoja ciega calificada (las NOTAS) con la clave, si ya la llenaste.
+
+    Devuelve la tabla y una lista de avisos sobre columnas que no sirven para comparar (D-31).
+    """
     hoja, clave = dir_ / "evaluacion_ciega.csv", dir_ / "crudo" / "clave_ciega.json"
     if not hoja.exists() or not clave.exists():
-        return None
+        return None, []
     resumen, hechas, _ = resumir_ciega(hoja, clave, ["claridad_1a5", "utilidad_1a5"],
                                        "inventa_datos_si_no")
     if not hechas:
-        return None
-    return pd.DataFrame(resumen).set_index("modelo")
+        return None, []
+    return pd.DataFrame(resumen).set_index("modelo"), avisos_hoja(leer_hoja(hoja))
+
+
+def avisos_hoja(filas: list[dict]) -> list[str]:
+    """Columnas de la hoja ciega que no distinguen nada: vacías o con un solo valor (D-31)."""
+    avisos = []
+    for col in ("claridad_1a5", "utilidad_1a5", "inventa_datos_si_no"):
+        valores = [f.get(col, "").strip().lower() for f in filas]
+        llenos = [v for v in valores if v]
+        if not llenos:
+            avisos.append(f"`{col}` está vacía: no se puede reportar.")
+        elif len(llenos) == len(valores) and len(set(llenos)) == 1 and len(valores) > 1:
+            avisos.append(f"`{col}` tiene el mismo valor (\"{llenos[0]}\") en las {len(valores)} "
+                          "notas: no distingue entre modelos.")
+    return avisos
 
 
 def main(simulado: bool) -> None:
@@ -126,8 +149,21 @@ def main(simulado: bool) -> None:
                              "menciona_puesto_y_empresa", "saludo_y_despedida", "json_valido",
                              "recall_requisitos", "modalidad_ok"] if c in df]
     por_criterio = df.groupby(["tarea", "modelo"])[criterios].mean().round(2)
+    # D-31: alertas de la nota. No entran en la calidad; dicen qué notas hay que leer.
+    alertas = None
+    notas = df[df["tarea"] == "nota"]
+    if len(notas) and {"primera_persona", "cita_alguna_cifra"} <= set(df.columns):
+        g = notas.groupby("modelo", sort=False)
+        alertas = pd.DataFrame({
+            "notas": g.size(),
+            "hablan_en_primera_persona": g["primera_persona"].sum().astype(int),
+            "citan_alguna_cifra": g["cita_alguna_cifra"].sum().astype(int),
+            "con_cifra_que_no_venia": (1 - g["sin_cifras_inventadas"].mean()).mul(g.size())
+                                      .round().astype(int),
+        })
 
-    _barras(df, "calidad", "Calidad por tarea (rúbrica automática, 0–1)", "calidad", img / "calidad.png")
+    _barras(df, "calidad", "Calidad por tarea (rúbrica automática, promedio de 0 a 1)", "calidad",
+            img / "calidad.png", resumen="mean")
     _barras(df, "latencia_total_s", "Latencia total por tarea (mediana)", "segundos", img / "latencia.png")
     # D-27: la memoria que vale es la que reporta Ollama (/api/ps), no el RSS del proceso:
     # con el modelo en la tarjeta gráfica, el RSS sale en ~100 MB y no dice nada.
@@ -139,7 +175,7 @@ def main(simulado: bool) -> None:
 
     frio_path = dir_ / "arranque_en_frio.json"
     frio = json.loads(frio_path.read_text()) if frio_path.exists() else {}
-    humana = _humana(dir_)
+    humana, avisos = _humana(dir_)
 
     md = ["# Resultados del benchmark" + (" (SIMULADO: no usar)" if simulado else ""), "",
           "## Resumen por tarea y modelo", "", resumen.to_markdown(), "",
@@ -148,8 +184,14 @@ def main(simulado: bool) -> None:
           "*A ritmo lento*: respuestas generadas a menos del 60 % de la velocidad normal del "
           "modelo (señal de que el equipo se calentó o estaba ocupado).", "",
           "## Arranque en frío", "", "```json", json.dumps(frio, indent=2), "```", ""]
+    if alertas is not None:
+        md += ["## Alertas de la nota (no entran en la calidad)", "", alertas.to_markdown(), "",
+               "*Hablan en primera persona*: dicen \"mi salario\" o \"mi expectativa\", como si la "
+               "persona le escribiera a la empresa. La nota debería aconsejar a la persona "
+               "(\"tu expectativa\"). Es una alerta para leer, no una prueba.", ""]
     if humana is not None:
         md += ["## Evaluación humana ciega de las notas (1–5)", "", humana.to_markdown(), ""]
+        md += [f"- ⚠️ {a}" for a in avisos] + ([""] if avisos else [])
     rel = "../" * (len(dir_.relative_to(RAIZ).parts)) + str(img.relative_to(RAIZ)).replace("\\", "/")
     md += ["## Gráficas", "", f"![calidad]({rel}/calidad.png)", f"![latencia]({rel}/latencia.png)",
            f"![memoria]({rel}/memoria.png)", f"![ritmo]({rel}/ritmo.png)"]

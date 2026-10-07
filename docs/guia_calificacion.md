@@ -64,3 +64,11 @@ Escribe **no** cuando solo usa las cifras de la tabla. No cuenta como inventar:
 3. **Compara contra los hechos, no contra tu opinión.** No importa si tú habrías aconsejado otra cosa: importa si la nota respeta lo que se le dio.
 4. **Si dudas entre dos notas, pon la más baja** y escribe por qué en `comentario`.
 5. **Califica todas de corrido**, con los mismos criterios de principio a fin.
+
+## Lo que esta guía no preguntaba (aprendido después de usarla)
+
+La guía se dejó como estaba cuando se calificó, para que se vea con qué criterios se hizo. Al leer las 40 notas apareció un criterio que faltaba (D-31):
+
+- **¿Para quién está escrita la nota?** Debe aconsejar a la persona ("tu expectativa…"). Una nota que empieza con "Estimado equipo de RR. HH." y dice "mi salario actual es…" es un mensaje para la empresa: no sirve como nota privada, aunque responda las tres preguntas de utilidad. Con esta guía, varias notas así recibieron 5.
+
+Para una próxima evaluación conviene agregar la columna `dirigida_a_la_persona_si_no` y revisar, antes de pedir el resumen, que ninguna columna quede vacía o con el mismo valor en todas las filas (`python -m bench.analizar` ahora lo avisa).

@@ -241,7 +241,13 @@ def _armar(progreso: Path, salida: Path, crudo: Path) -> None:
               if f["rep"] == 0]
     (crudo / "salidas.jsonl").write_text(
         "\n".join(json.dumps(t, ensure_ascii=False) for t in textos), encoding="utf-8")
-    _hoja_ciega(textos, salida, crudo)
+    try:
+        _hoja_ciega(textos, salida, crudo)
+    except PermissionError:
+        # En Windows, Excel bloquea el archivo mientras lo tiene abierto.
+        print("\n⚠️ No pude actualizar resultados/evaluacion_ciega.csv porque está abierto en "
+              "otro programa (¿Excel?).\n   Las respuestas ya están guardadas. Cierra el archivo "
+              "y corre:  python -m bench.correr_bench --armar")
 
 
 COLS_HOJA = ["claridad_1a5", "utilidad_1a5", "inventa_datos_si_no", "comentario"]
