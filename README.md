@@ -4,7 +4,6 @@ App que genera una **carta de interés** para acompañar tu CV y una **nota priv
 
 > **Tu salario nunca sale de tu computadora.** Hay pruebas automatizadas que lo demuestran.
 
-- 🎥 **Demo:** _[pegar aquí el link del video]_
 - 📝 **Artículo:** _[pegar aquí el link de Medium/Substack]_
 - 🧭 **Todas las decisiones y su porqué:** [`docs/decisiones.md`](docs/decisiones.md)
 - 🪜 **Guía para reproducir el proyecto desde cero:** [`docs/pasos.md`](docs/pasos.md)
