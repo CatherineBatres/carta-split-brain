@@ -5,7 +5,7 @@ App que genera una **carta de interés** para acompañar tu CV y una **nota priv
 > **Tu salario nunca sale de tu computadora.** Hay pruebas automatizadas que lo demuestran.
 
 - ▶️ **Abrir la app:** `streamlit run app.py` y luego [http://127.0.0.1:8501](http://127.0.0.1:8501) en el navegador ([paso a paso](#4-correr-la-app))
-- 📝 **Artículo:** [Tu salario no tiene por qué viajar a la nube](docs/articulo.md)
+- 📝 **Artículo:** [Tu salario no tiene por qué viajar a la nube](docs/articulo.md) https://docs.google.com/document/d/1rcOQAKG5N64-uSZS-S44N_zyxRTjTebuUwTiwIbjfyc/edit?usp=sharing 
 - 🧭 **Todas las decisiones y su porqué:** [`docs/decisiones.md`](docs/decisiones.md)
 - 🪜 **Guía para reproducir el proyecto desde cero:** [`docs/pasos.md`](docs/pasos.md)
 - 🎬 **Guion y formularios de ejemplo para demostraciones:** [`docs/demo.md`](docs/demo.md)
