@@ -1,6 +1,6 @@
 # ✉️ Carta Split Brain
 
-App que genera una **carta de interés** para acompañar tu CV y una **nota privada de negociación salarial**, con una arquitectura *split brain*: una parte corre en tu computadora (reglas + un modelo local con Ollama) y otra en la nube (Gemini).
+App que genera una **carta de interés** para acompañar tu CV y una **nota privada de negociación salarial**, con una arquitectura *split brain*: una parte corre en la computadora empleando reglas y un modelo local con Ollama; y otra en la nube empleando Gemini.
 
 > **Tu salario nunca sale de tu computadora.** Hay pruebas automatizadas que lo demuestran.
 
